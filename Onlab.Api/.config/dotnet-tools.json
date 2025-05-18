@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "isRoot": true,
+  "tools": {
+    "makegenericagain": {
+      "version": "1.0.6",
+      "commands": [
+        "makeGenericAgain"
+      ],
+      "rollForward": false
+    }
+  }
+}

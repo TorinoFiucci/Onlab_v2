@@ -1,0 +1,14 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Onlab.Dal\Onlab.Dal.csproj" />
+    <ProjectReference Include="..\Onlab.Transfer\Onlab.Transfer.csproj" />
+  </ItemGroup>
+
+</Project>
