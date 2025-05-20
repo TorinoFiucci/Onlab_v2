@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Onlab.Dal;
 
@@ -11,9 +12,11 @@ using Onlab.Dal;
 namespace Onlab.Dal.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250518192612_Migr5")]
+    partial class Migr5
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -51,10 +54,11 @@ namespace Onlab.Dal.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<int?>("BandId")
+                    b.Property<int>("BandId")
                         .HasColumnType("int");
 
                     b.Property<string>("Contact")
+                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("Date")
@@ -79,15 +83,16 @@ namespace Onlab.Dal.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("Description")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<int>("BandId")
+                        .HasColumnType("int");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("BandId");
 
                     b.ToTable("Setlists");
                 });
@@ -104,10 +109,15 @@ namespace Onlab.Dal.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int>("Status")
+                    b.Property<bool>("IsCompleted")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("SetlistId")
                         .HasColumnType("int");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("SetlistId");
 
                     b.ToTable("Tasks");
                 });
@@ -142,15 +152,39 @@ namespace Onlab.Dal.Migrations
                 {
                     b.HasOne("Onlab.Dal.Entities.Band", "Band")
                         .WithMany()
-                        .HasForeignKey("BandId");
+                        .HasForeignKey("BandId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("Band");
+                });
+
+            modelBuilder.Entity("Onlab.Dal.Entities.Setlist", b =>
+                {
+                    b.HasOne("Onlab.Dal.Entities.Band", "Band")
+                        .WithMany()
+                        .HasForeignKey("BandId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Band");
+                });
+
+            modelBuilder.Entity("Onlab.Dal.Entities.TaskItem", b =>
+                {
+                    b.HasOne("Onlab.Dal.Entities.Setlist", "Setlist")
+                        .WithMany("Tasks")
+                        .HasForeignKey("SetlistId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Setlist");
                 });
 
             modelBuilder.Entity("Onlab.Dal.Entities.User", b =>
                 {
                     b.HasOne("Onlab.Dal.Entities.Band", "Band")
-                        .WithMany("Users")
+                        .WithMany("Members")
                         .HasForeignKey("BandId");
 
                     b.Navigation("Band");
@@ -158,7 +192,12 @@ namespace Onlab.Dal.Migrations
 
             modelBuilder.Entity("Onlab.Dal.Entities.Band", b =>
                 {
-                    b.Navigation("Users");
+                    b.Navigation("Members");
+                });
+
+            modelBuilder.Entity("Onlab.Dal.Entities.Setlist", b =>
+                {
+                    b.Navigation("Tasks");
                 });
 #pragma warning restore 612, 618
         }

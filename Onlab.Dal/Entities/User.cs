@@ -13,7 +13,7 @@ namespace Onlab.Dal.Entities
         public string Role { get; set; } = string.Empty; // e.g., Manager, Musician
 
         // Foreign Key to Band
-        public int BandId { get; set; }
-        public Band? Band { get; set; }
+        public int? BandId { get; set; }    // Foreign Key (nullable if optional)
+        public virtual Band? Band { get; set; } // Navigation property
     }
 }

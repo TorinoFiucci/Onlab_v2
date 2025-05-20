@@ -7,6 +7,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="AutoMapper" Version="14.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Onlab.Dal\Onlab.Dal.csproj" />
     <ProjectReference Include="..\Onlab.Transfer\Onlab.Transfer.csproj" />
   </ItemGroup>

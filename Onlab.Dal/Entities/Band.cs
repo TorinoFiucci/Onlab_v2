@@ -12,13 +12,16 @@ namespace Onlab.Dal.Entities
         public string Name { get; set; } = string.Empty;
         public string Genre { get; set; } = string.Empty;
 
+        //public ICollection<int> UserIds { get; set; } = new List<int>(); // List of user IDs (FKs) for band members
+
         // One band has many users (band members)
-        public List<User> Members { get; set; } = new();
+        //public List<User> Members { get; set; } = new();
+        public ICollection<User> Users { get; set; } = new List<User>();  // Navigation property
 
         // One band has many concerts
-        public List<Concert> Concerts { get; set; } = new();
+        //public List<Concert> Concerts { get; set; } = new();
 
         // One band has many setlists
-        public List<Setlist> Setlists { get; set; } = new();
+        //public List<Setlist> Setlists { get; set; } = new();
     }
 }

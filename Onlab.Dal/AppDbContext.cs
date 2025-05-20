@@ -14,28 +14,30 @@ public class AppDbContext : DbContext // IdentityDbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        base.OnModelCreating(modelBuilder);
+
         // One-to-Many: Band -> Users
+
         modelBuilder.Entity<User>()
-            .HasOne(u => u.Band)
-            .WithMany(b => b.Members)
-            .HasForeignKey(u => u.BandId);
+       .HasOne(u => u.Band)        // User has one Band (or null)
+       .WithMany(b => b.Users)   // Band has many Members
+       .HasForeignKey(u => u.BandId) // The foreign key is BandId
+       .IsRequired(false);
 
         // One-to-Many: Band -> Concerts
-        modelBuilder.Entity<Concert>()
-            .HasOne(c => c.Band)
-            .WithMany(b => b.Concerts)
-            .HasForeignKey(c => c.BandId);
+
+        //modelBuilder.Entity<Concert>()
+        //    .HasOne(c => c.Band)
+        //    .WithMany(b => b.Concerts)
+        //    .HasForeignKey(c => c.BandId);
 
         // One-to-Many: Band -> Setlists
-        modelBuilder.Entity<Setlist>()
-            .HasOne(s => s.Band)
-            .WithMany(b => b.Setlists)
-            .HasForeignKey(s => s.BandId);
 
-        // One-to-Many: Setlist -> TaskItems
-        modelBuilder.Entity<TaskItem>()
-            .HasOne(t => t.Setlist)
-            .WithMany(s => s.Tasks)
-            .HasForeignKey(t => t.SetlistId);
+        //modelBuilder.Entity<Setlist>()
+        //    .HasOne(s => s.Band)
+        //    .WithMany(b => b.Setlists)
+        //    .HasForeignKey(s => s.BandId);
+
+        
     }
 }

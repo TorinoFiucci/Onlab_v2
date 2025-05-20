@@ -3,14 +3,9 @@
   <Class Name="Onlab.Dal.Entities.Band">
     <Position X="3.25" Y="1" Width="1.5" />
     <TypeIdentifier>
-      <HashCode>AAACAAAAAAAIAAAAAAIAAAQAAAAAAAAAAAAFAAAAAAA=</HashCode>
+      <HashCode>AAACAAAAAAAAAAAAAAIAAAQAAAAAAAAAAAAAAAAAAAA=</HashCode>
       <FileName>Entities\Band.cs</FileName>
     </TypeIdentifier>
-    <ShowAsCollectionAssociation>
-      <Property Name="Concerts" />
-      <Property Name="Members" />
-      <Property Name="Setlists" />
-    </ShowAsCollectionAssociation>
   </Class>
   <Class Name="Onlab.Dal.Entities.Concert">
     <Position X="6" Y="0.5" Width="1.5" />

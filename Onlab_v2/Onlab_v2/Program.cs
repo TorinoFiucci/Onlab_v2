@@ -24,9 +24,12 @@ builder.Services.AddCors(options =>
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// builder.Services.AddAutoMapper(typeof(Onlab.Bll.Mappings.MappingProfile));
+builder.Services.AddAutoMapper(typeof(Onlab.Bll.Mappings.MappingProfile));
 
 builder.Services.AddBllServices();
+builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IBandService, BandService>();
+
 
 // Add controllers for API endpoints
 builder.Services.AddControllers();
@@ -77,7 +80,9 @@ app.UseAuthorization();
 // Map API controllers
 app.MapControllers();
 
-// app.Services.GetRequiredService<IMapper>().ConfigurationProvider.AssertConfigurationIsValid();
+//app.Services.GetRequiredService<IMapper>().ConfigurationProvider.AssertConfigurationIsValid();
+
+//app.MapStaticAssets();
 
 // Map Razor Components for the Blazor client
 app.MapRazorComponents<App>()

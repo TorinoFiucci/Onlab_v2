@@ -75,7 +75,7 @@ namespace Onlab.Dal.Migrations
                         .Annotation("SqlServer:Identity", "1, 1"),
                     Name = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Role = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    BandId = table.Column<int>(type: "int", nullable: false)
+                    BandId = table.Column<int>(type: "int", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -84,8 +84,7 @@ namespace Onlab.Dal.Migrations
                         name: "FK_Users_Bands_BandId",
                         column: x => x.BandId,
                         principalTable: "Bands",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "Id");
                 });
 
             migrationBuilder.CreateTable(

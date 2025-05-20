@@ -11,11 +11,8 @@ namespace Onlab.Dal.Entities
         public int Id { get; set; }
         public string Name { get; set; } = string.Empty;
 
-        // Foreign Key to Band
-        public int BandId { get; set; }
-        public Band? Band { get; set; }
+        public string Description { get; set; } = string.Empty;
 
-        // A setlist contains many task items
-        public List<TaskItem> Tasks { get; set; } = new();
+
     }
 }

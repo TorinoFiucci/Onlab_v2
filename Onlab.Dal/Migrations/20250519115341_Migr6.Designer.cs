@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Onlab.Dal;
 
@@ -11,9 +12,11 @@ using Onlab.Dal;
 namespace Onlab.Dal.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250519115341_Migr6")]
+    partial class Migr6
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -35,6 +38,10 @@ namespace Onlab.Dal.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.PrimitiveCollection<string>("UserIds")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
@@ -150,7 +157,7 @@ namespace Onlab.Dal.Migrations
             modelBuilder.Entity("Onlab.Dal.Entities.User", b =>
                 {
                     b.HasOne("Onlab.Dal.Entities.Band", "Band")
-                        .WithMany("Users")
+                        .WithMany("Members")
                         .HasForeignKey("BandId");
 
                     b.Navigation("Band");
@@ -158,7 +165,7 @@ namespace Onlab.Dal.Migrations
 
             modelBuilder.Entity("Onlab.Dal.Entities.Band", b =>
                 {
-                    b.Navigation("Users");
+                    b.Navigation("Members");
                 });
 #pragma warning restore 612, 618
         }

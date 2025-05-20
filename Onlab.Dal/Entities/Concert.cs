@@ -11,10 +11,10 @@ namespace Onlab.Dal.Entities
         public int Id { get; set; }
         public string Venue { get; set; } = string.Empty;
         public DateTime Date { get; set; }
-        public string Contact { get; set; } = string.Empty;
+        public string? Contact { get; set; } = string.Empty;
 
         // Foreign Key to Band
-        public int BandId { get; set; }
+        public int? BandId { get; set; }
         public Band? Band { get; set; }
     }
 }

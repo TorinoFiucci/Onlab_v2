@@ -6,14 +6,25 @@ using System.Threading.Tasks;
 
 namespace Onlab.Dal.Entities
 {
+
+    public enum TaskStatus
+    {
+        New,
+        InProgress,
+        Done
+    }
     public class TaskItem
     {
         public int Id { get; set; }
         public string Description { get; set; } = string.Empty;
-        public bool IsCompleted { get; set; }
+        public TaskStatus Status { get; set; }
 
-        // Foreign Key to Setlist
-        public int SetlistId { get; set; }
-        public Setlist? Setlist { get; set; }
+        // public int BandId { get; set; } // Foreign Key
+        // public Band Band { get; set; } // Navigation Property
+        // public int? AssignedUserId { get; set; } // Foreign Key (nullable if optional)
+        // public User AssignedUser { get; set; } // Navigation Property
+
     }
+
+
 }

@@ -12,15 +12,15 @@ using Onlab.Dal;
 namespace Onlab.Dal.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20250412184909_InitialCreate")]
-    partial class InitialCreate
+    [Migration("20250518191925_Migr4")]
+    partial class Migr4
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "9.0.4")
+                .HasAnnotation("ProductVersion", "9.0.5")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -130,7 +130,7 @@ namespace Onlab.Dal.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<int>("BandId")
+                    b.Property<int?>("BandId")
                         .HasColumnType("int");
 
                     b.Property<string>("Name")
@@ -151,7 +151,7 @@ namespace Onlab.Dal.Migrations
             modelBuilder.Entity("Onlab.Dal.Entities.Concert", b =>
                 {
                     b.HasOne("Onlab.Dal.Entities.Band", "Band")
-                        .WithMany("Concerts")
+                        .WithMany()
                         .HasForeignKey("BandId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -162,7 +162,7 @@ namespace Onlab.Dal.Migrations
             modelBuilder.Entity("Onlab.Dal.Entities.Setlist", b =>
                 {
                     b.HasOne("Onlab.Dal.Entities.Band", "Band")
-                        .WithMany("Setlists")
+                        .WithMany()
                         .HasForeignKey("BandId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -185,20 +185,14 @@ namespace Onlab.Dal.Migrations
                 {
                     b.HasOne("Onlab.Dal.Entities.Band", "Band")
                         .WithMany("Members")
-                        .HasForeignKey("BandId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("BandId");
 
                     b.Navigation("Band");
                 });
 
             modelBuilder.Entity("Onlab.Dal.Entities.Band", b =>
                 {
-                    b.Navigation("Concerts");
-
                     b.Navigation("Members");
-
-                    b.Navigation("Setlists");
                 });
 
             modelBuilder.Entity("Onlab.Dal.Entities.Setlist", b =>

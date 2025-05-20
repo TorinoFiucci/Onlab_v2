@@ -6,8 +6,8 @@
 
 #nullable enable
 
-using Onlab.Dal.Entities;
 using Onlab.Transfer;
+using Onlab.Dal.Entities;
 
 #pragma warning disable 108 // Disable "CS0108 '{derivedDto}.ToJson()' hides inherited member '{dtoBase}.ToJson()'. Use the new keyword if hiding was intended."
 #pragma warning disable 114 // Disable "CS0114 '{derivedDto}.RaisePropertyChanged(String)' hides inherited member 'dtoBase.RaisePropertyChanged(String)'. To make the current member override that implementation, add the override keyword. Otherwise add the new keyword."
@@ -28,26 +28,33 @@ namespace Onlab.Api
     using System = global::System;
 
     [System.CodeDom.Compiler.GeneratedCode("NSwag", "14.2.0.0 (NJsonSchema v11.1.0.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial interface IBandsClient
+    public partial interface IUsersClient
     {
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<System.Collections.Generic.IList<BandData>> GetBandsAsync();
+        System.Threading.Tasks.Task<System.Collections.Generic.IList<User>> GetUsersAsync();
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<System.Collections.Generic.IList<BandData>> GetBandsAsync(System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<System.Collections.Generic.IList<User>> GetUsersAsync(System.Threading.CancellationToken cancellationToken);
+
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<UserData> CreateUserAsync(UserData createUserData);
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<UserData> CreateUserAsync(UserData createUserData, System.Threading.CancellationToken cancellationToken);
 
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NSwag", "14.2.0.0 (NJsonSchema v11.1.0.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class BandsClient : IBandsClient
+    public partial class UsersClient : IUsersClient
     {
         private System.Net.Http.HttpClient _httpClient;
         private static System.Lazy<System.Text.Json.JsonSerializerOptions> _settings = new System.Lazy<System.Text.Json.JsonSerializerOptions>(CreateSerializerSettings, true);
         private System.Text.Json.JsonSerializerOptions _instanceSettings;
 
     #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
-        public BandsClient(System.Net.Http.HttpClient httpClient)
+        public UsersClient(System.Net.Http.HttpClient httpClient)
     #pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         {
             _httpClient = httpClient;
@@ -75,14 +82,14 @@ namespace Onlab.Api
         partial void ProcessResponse(System.Net.Http.HttpClient client, System.Net.Http.HttpResponseMessage response);
 
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<System.Collections.Generic.IList<BandData>> GetBandsAsync()
+        public virtual System.Threading.Tasks.Task<System.Collections.Generic.IList<User>> GetUsersAsync()
         {
-            return GetBandsAsync(System.Threading.CancellationToken.None);
+            return GetUsersAsync(System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<System.Collections.Generic.IList<BandData>> GetBandsAsync(System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<System.Collections.Generic.IList<User>> GetUsersAsync(System.Threading.CancellationToken cancellationToken)
         {
             var client_ = _httpClient;
             var disposeClient_ = false;
@@ -95,8 +102,8 @@ namespace Onlab.Api
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/Bands"
-                    urlBuilder_.Append("api/Bands");
+                    // Operation Path: "api/Users"
+                    urlBuilder_.Append("api/Users");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -123,7 +130,90 @@ namespace Onlab.Api
                         var status_ = (int)response_.StatusCode;
                         if (status_ == 200)
                         {
-                            var objectResponse_ = await ReadObjectResponseAsync<System.Collections.Generic.IList<BandData>>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            var objectResponse_ = await ReadObjectResponseAsync<System.Collections.Generic.IList<User>>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual System.Threading.Tasks.Task<UserData> CreateUserAsync(UserData createUserData)
+        {
+            return CreateUserAsync(createUserData, System.Threading.CancellationToken.None);
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<UserData> CreateUserAsync(UserData createUserData, System.Threading.CancellationToken cancellationToken)
+        {
+            if (createUserData == null)
+                throw new System.ArgumentNullException("createUserData");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+                    var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(createUserData, JsonSerializerSettings);
+                    var content_ = new System.Net.Http.ByteArrayContent(json_);
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
+                    request_.Content = content_;
+                    request_.Method = new System.Net.Http.HttpMethod("POST");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+                
+                    // Operation Path: "api/Users"
+                    urlBuilder_.Append("api/Users");
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<UserData>(response_, headers_, cancellationToken).ConfigureAwait(false);
                             if (objectResponse_.Object == null)
                             {
                                 throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
@@ -260,33 +350,33 @@ namespace Onlab.Api
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NSwag", "14.2.0.0 (NJsonSchema v11.1.0.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial interface IUsersClient
+    public partial interface IBandsClient
     {
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<System.Collections.Generic.IList<User>> GetUsersAsync();
+        System.Threading.Tasks.Task<System.Collections.Generic.IList<BandData>> GetBandsAsync();
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<System.Collections.Generic.IList<User>> GetUsersAsync(System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<System.Collections.Generic.IList<BandData>> GetBandsAsync(System.Threading.CancellationToken cancellationToken);
 
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<User> CreateUserAsync(User user);
+        System.Threading.Tasks.Task<Band> CreateBandAsync(Band band);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<User> CreateUserAsync(User user, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<Band> CreateBandAsync(Band band, System.Threading.CancellationToken cancellationToken);
 
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NSwag", "14.2.0.0 (NJsonSchema v11.1.0.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class UsersClient : IUsersClient
+    public partial class BandsClient : IBandsClient
     {
         private System.Net.Http.HttpClient _httpClient;
         private static System.Lazy<System.Text.Json.JsonSerializerOptions> _settings = new System.Lazy<System.Text.Json.JsonSerializerOptions>(CreateSerializerSettings, true);
         private System.Text.Json.JsonSerializerOptions _instanceSettings;
 
     #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
-        public UsersClient(System.Net.Http.HttpClient httpClient)
+        public BandsClient(System.Net.Http.HttpClient httpClient)
     #pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         {
             _httpClient = httpClient;
@@ -314,14 +404,14 @@ namespace Onlab.Api
         partial void ProcessResponse(System.Net.Http.HttpClient client, System.Net.Http.HttpResponseMessage response);
 
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<System.Collections.Generic.IList<User>> GetUsersAsync()
+        public virtual System.Threading.Tasks.Task<System.Collections.Generic.IList<BandData>> GetBandsAsync()
         {
-            return GetUsersAsync(System.Threading.CancellationToken.None);
+            return GetBandsAsync(System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<System.Collections.Generic.IList<User>> GetUsersAsync(System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<System.Collections.Generic.IList<BandData>> GetBandsAsync(System.Threading.CancellationToken cancellationToken)
         {
             var client_ = _httpClient;
             var disposeClient_ = false;
@@ -334,8 +424,8 @@ namespace Onlab.Api
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/Users"
-                    urlBuilder_.Append("api/Users");
+                    // Operation Path: "api/Bands"
+                    urlBuilder_.Append("api/Bands");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -362,7 +452,7 @@ namespace Onlab.Api
                         var status_ = (int)response_.StatusCode;
                         if (status_ == 200)
                         {
-                            var objectResponse_ = await ReadObjectResponseAsync<System.Collections.Generic.IList<User>>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            var objectResponse_ = await ReadObjectResponseAsync<System.Collections.Generic.IList<BandData>>(response_, headers_, cancellationToken).ConfigureAwait(false);
                             if (objectResponse_.Object == null)
                             {
                                 throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
@@ -390,17 +480,17 @@ namespace Onlab.Api
         }
 
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<User> CreateUserAsync(User user)
+        public virtual System.Threading.Tasks.Task<Band> CreateBandAsync(Band band)
         {
-            return CreateUserAsync(user, System.Threading.CancellationToken.None);
+            return CreateBandAsync(band, System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<User> CreateUserAsync(User user, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<Band> CreateBandAsync(Band band, System.Threading.CancellationToken cancellationToken)
         {
-            if (user == null)
-                throw new System.ArgumentNullException("user");
+            if (band == null)
+                throw new System.ArgumentNullException("band");
 
             var client_ = _httpClient;
             var disposeClient_ = false;
@@ -408,7 +498,7 @@ namespace Onlab.Api
             {
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
-                    var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(user, JsonSerializerSettings);
+                    var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(band, JsonSerializerSettings);
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
                     content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
                     request_.Content = content_;
@@ -417,8 +507,8 @@ namespace Onlab.Api
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/Users"
-                    urlBuilder_.Append("api/Users");
+                    // Operation Path: "api/Bands"
+                    urlBuilder_.Append("api/Bands");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -445,7 +535,7 @@ namespace Onlab.Api
                         var status_ = (int)response_.StatusCode;
                         if (status_ == 200)
                         {
-                            var objectResponse_ = await ReadObjectResponseAsync<User>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            var objectResponse_ = await ReadObjectResponseAsync<Band>(response_, headers_, cancellationToken).ConfigureAwait(false);
                             if (objectResponse_.Object == null)
                             {
                                 throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
