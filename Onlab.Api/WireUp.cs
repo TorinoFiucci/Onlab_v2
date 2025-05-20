@@ -10,6 +10,8 @@ namespace Onlab.Api
             services.AddScoped(sp => sp.GetRequiredService<IHttpClientFactory>().CreateClient("MyApi"));
 
             services.AddHttpClient<IBandsClient, BandsClient>("MyApi");
+            
+            services.AddHttpClient<IUsersClient, UsersClient>("MyApi");
         }
     }
 }

@@ -27,8 +27,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddAutoMapper(typeof(Onlab.Bll.Mappings.MappingProfile));
 
 builder.Services.AddBllServices();
-builder.Services.AddScoped<IUserService, UserService>();
-builder.Services.AddScoped<IBandService, BandService>();
+
 
 
 // Add controllers for API endpoints

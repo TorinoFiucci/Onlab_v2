@@ -8,6 +8,7 @@ namespace Onlab.Bll
         public static IServiceCollection AddBllServices(this IServiceCollection services)
         {
             services.AddScoped<IBandService, BandService>();
+            services.AddScoped<IUserService, UserService>();
 
             return services;
         }
