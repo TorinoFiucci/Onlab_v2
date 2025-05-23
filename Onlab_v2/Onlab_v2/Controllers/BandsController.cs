@@ -8,7 +8,7 @@ namespace Onlab.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class BandsController(IBandService bandService, AppDbContext context) : ControllerBase
+    public class BandsController(IBandService bandService) : ControllerBase
     {
         
 
@@ -19,8 +19,13 @@ namespace Onlab.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> CreateBand(CreateBandData createBandData)
+        public async Task<IActionResult> CreateBand([FromBody]CreateBandData createBandData)
         {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
             await bandService.CreateBandAsync(createBandData);
             return Ok();
         }

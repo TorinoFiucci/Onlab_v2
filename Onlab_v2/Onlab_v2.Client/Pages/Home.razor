@@ -1,9 +1,149 @@
 ﻿@page "/"
+@inject ITaskItemsClient TaskItemsClient 
+
+@inject ISnackbar Snackbar
+
+@using Onlab.Transfer 
+@using Onlab.Dal.Entities 
 @using Onlab.Api
 
+<PageTitle>Kanban Board</PageTitle>
 
-<PageTitle>Home</PageTitle>
+<MudText Typo="Typo.h4" GutterBottom="true">Task Kanban Board</MudText>
 
-<h1>Hello, world!</h1>
+@if (_allTaskItems == null)
+{
+    <MudProgressCircular Indeterminate="true" />
+}
+else
+{
+    <MudDropContainer T="TaskItemData" Items="_allTaskItems" ItemsSelector="@((item,dropzoneIdentifier) => item.Status.ToString() == (string)dropzoneIdentifier)" ItemDropped="TaskItemStatusUpdated" Class="d-flex flex-wrap flex-grow-1">
+        <ChildContent>
+            <MudGrid Spacing="3" Justify="Justify.Center">
+                <MudItem xs="12" sm="4">
+                    <MudDropZone T="TaskItemData" Identifier="@Onlab.Dal.Entities.TaskStatus.New.ToString()" Class="rounded mud-background-gray pa-6 miw-300 h-100">
+                        <MudText Typo="Typo.h6" Class="mb-4">New</MudText>
+                    </MudDropZone>
+                </MudItem>
+                <MudItem xs="12" sm="4">
+                    <MudDropZone T="TaskItemData" Identifier="@Onlab.Dal.Entities.TaskStatus.InProgress.ToString()" Class="rounded mud-background-gray pa-6 miw-300 h-100">
+                        <MudText Typo="Typo.h6" Class="mb-4">In Progress</MudText>
+                    </MudDropZone>
+                </MudItem>
+                <MudItem xs="12" sm="4">
+                    <MudDropZone T="TaskItemData" Identifier="@Onlab.Dal.Entities.TaskStatus.Done.ToString()" Class="rounded mud-background-gray pa-6 miw-300 h-100">
+                        <MudText Typo="Typo.h6" Class="mb-4">Done</MudText>
+                    </MudDropZone>
+                </MudItem>
+            </MudGrid>
+        </ChildContent>
+        <ItemRenderer>
+            <MudPaper Elevation="3" Class="pa-4 my-2">
+                <MudText Typo="Typo.body1"><strong>@context.Description</strong></MudText>
+                <MudText Typo="Typo.caption">Due: @context.DueDate.ToString("yyyy-MM-dd")</MudText>
+                @if (!string.IsNullOrEmpty(context.User?.Name))
+                {
+                    <MudText Typo="Typo.caption">Assignee: @context.User.Name</MudText>
+                }
+                else
+                {
+                    <MudText Typo="Typo.caption">Assignee: Unassigned</MudText>
+                }
+            </MudPaper>
+        </ItemRenderer>
+    </MudDropContainer>
+}
 
-Welcome to your new app.
+@code {
+    private List<TaskItemData>? _allTaskItems;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadTaskItems();
+    }
+
+    private async Task LoadTaskItems()
+    {
+        try
+        {
+            
+            var tasksFromApi = await TaskItemsClient.GetTaskItemsAsync(); 
+            if (tasksFromApi != null)
+            {
+                _allTaskItems = tasksFromApi.ToList(); 
+            }
+            else
+            {
+                _allTaskItems = new List<TaskItemData>();
+                Snackbar.Add("No tasks found or error loading tasks.", Severity.Warning);
+            }
+        }
+        catch (ApiException ex) // Catch specific ApiException from NSwag client
+        {
+            _allTaskItems = new List<TaskItemData>();
+            Snackbar.Add($"Error loading tasks: API Error {ex.StatusCode} - {ex.Message}", Severity.Error);
+        }
+        catch (Exception ex) // Catch other general exceptions
+        {
+            _allTaskItems = new List<TaskItemData>();
+            Snackbar.Add($"Error loading tasks: {ex.Message}", Severity.Error);
+        }
+        StateHasChanged();
+    }
+
+    private async void TaskItemStatusUpdated(MudItemDropInfo<TaskItemData> dropItem)
+    {
+        if (dropItem.Item == null) return;
+
+        if (Enum.TryParse<Onlab.Dal.Entities.TaskStatus>(dropItem.DropzoneIdentifier, out var newStatus))
+        {
+            var taskToUpdate = dropItem.Item;
+
+            if (taskToUpdate.Status != newStatus)
+            {
+                Onlab.Dal.Entities.TaskStatus oldStatus = taskToUpdate.Status;
+                taskToUpdate.Status = newStatus; 
+
+                try
+                {
+                    // Call the NSwag client method, passing status as a string
+                    // NSwag client's UpdateTaskItemStatusAsync expects status as string
+                    // and returns Task<FileResponse>. We don't need to use the FileResponse content here.
+                    await TaskItemsClient.UpdateTaskItemStatusAsync(taskToUpdate.Id, newStatus.ToString());
+                    
+                    Snackbar.Add($"Task '{taskToUpdate.Description.Substring(0, Math.Min(20, taskToUpdate.Description.Length))}(...)' moved to {newStatus}.", Severity.Success);
+                }
+                catch (ApiException ex) // Catch specific ApiException from NSwag client
+                {
+                    taskToUpdate.Status = oldStatus; // Revert UI on API error
+                    Snackbar.Add($"Failed to update task status: API Error {ex.StatusCode} - {ex.Response ?? ex.Message}", Severity.Error);
+                }
+                catch (Exception ex) // Catch other general exceptions
+                {
+                    taskToUpdate.Status = oldStatus; // Revert UI on other errors
+                    Snackbar.Add($"Error updating task status: {ex.Message}", Severity.Error);
+                }
+                StateHasChanged();
+            }
+        }
+        else
+        {
+            Snackbar.Add($"Invalid drop zone identifier: {dropItem.DropzoneIdentifier}", Severity.Warning);
+        }
+    }
+}
+
+<style>
+    
+    .miw-300 { /* Minimum Item Width for columns */
+        min-width: 300px;
+    }
+    .h-100 { /* Ensures MudDropZone takes full height of its MudItem container */
+        height: 100%; 
+        min-height: 300px; /* Or a specific min-height for empty zones */
+    }
+    /* Ensure MudItem also allows its children to fill height if needed */
+    .mud-grid-item {
+        align-self: stretch; /* If using MudGrid with items of varying content height */
+    }
+</style>

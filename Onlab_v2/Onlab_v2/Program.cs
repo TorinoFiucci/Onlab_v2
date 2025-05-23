@@ -2,6 +2,8 @@ using Microsoft.EntityFrameworkCore;
 using Onlab.Dal;
 using Onlab.Bll;
 using Onlab_v2.Components;
+using MudBlazor.Services;
+using MudBlazor;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -28,7 +30,7 @@ builder.Services.AddAutoMapper(typeof(Onlab.Bll.Mappings.MappingProfile));
 
 builder.Services.AddBllServices();
 
-
+builder.Services.AddMudServices();
 
 // Add controllers for API endpoints
 builder.Services.AddControllers();

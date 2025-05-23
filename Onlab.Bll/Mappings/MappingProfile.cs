@@ -32,11 +32,20 @@ namespace Onlab.Bll.Mappings
             // this mapping will be simple property-to-property for other fields.
             // Password hashing logic is typically handled in the service, not by AutoMapper directly.
             CreateMap<CreateUserData, User>();
-                //.ForMember(dest => dest.Id, opt => opt.Ignore()) // Ignore Id for creation
-                //.ForMember(dest => dest.BandId, opt => opt.Ignore()) // Ignore BandId for creation
-                //.ForMember(dest => dest.Band, opt => opt.Ignore()); // Ignore Band for creation
+            //.ForMember(dest => dest.Id, opt => opt.Ignore()) // Ignore Id for creation
+            //.ForMember(dest => dest.BandId, opt => opt.Ignore()) // Ignore BandId for creation
+            //.ForMember(dest => dest.Band, opt => opt.Ignore()); // Ignore Band for creation
 
-                // Assuming CreateUserData exists
+            // Assuming CreateUserData exists
+
+            CreateMap<Setlist, SetlistData>();
+            CreateMap<CreateSetlistData, Setlist>();
+
+            CreateMap<TaskItem, TaskItemData>();
+            CreateMap<CreateTaskItemData, TaskItem>();
+
+            CreateMap<Concert, ConcertData>();
+            CreateMap<CreateConcertData, Concert>();
 
 
         }

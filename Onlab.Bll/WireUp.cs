@@ -9,6 +9,9 @@ namespace Onlab.Bll
         {
             services.AddScoped<IBandService, BandService>();
             services.AddScoped<IUserService, UserService>();
+            services.AddScoped<ISetlistService, SetlistService>();
+            services.AddScoped<ITaskItemService, TaskItemService>();
+            services.AddScoped<IConcertService, ConcertService>();
 
             return services;
         }

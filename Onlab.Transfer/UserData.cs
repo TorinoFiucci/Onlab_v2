@@ -4,16 +4,17 @@
     {
         public string Name { get; set; } = string.Empty;
         public string Role { get; set; } = string.Empty;
-        // Notice: No BandId or Band property here
+       
 
-        public int? BandId { get; set; } // Assuming you want to set BandId during creation
+        public int? BandId { get; set; } 
     }
 
-    public class UserData // Optional: DTO for returning user data
+    public class UserData 
     {
         
         public string Name { get; set; } = string.Empty;
         public string Role { get; set; } = string.Empty;
-        public string? BandName { get; set; } // Example if you want to include band name
+        public string? BandName { get; set; } 
+        public int Id { get; set; } // Assuming you want to include Id in the DTO
     }
 }

@@ -12,6 +12,12 @@ namespace Onlab.Api
             services.AddHttpClient<IBandsClient, BandsClient>("MyApi");
             
             services.AddHttpClient<IUsersClient, UsersClient>("MyApi");
+
+            services.AddHttpClient<ISetlistsClient, SetlistsClient>("MyApi");
+
+            services.AddHttpClient<IConcertsClient, ConcertsClient>("MyApi");
+
+            services.AddHttpClient<ITaskItemsClient, TaskItemsClient>("MyApi");
         }
     }
 }

@@ -38,6 +38,7 @@ public class AppDbContext : DbContext // IdentityDbContext
         //    .WithMany(b => b.Setlists)
         //    .HasForeignKey(s => s.BandId);
 
+
         
     }
 }
