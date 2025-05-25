@@ -14,17 +14,18 @@ namespace Onlab.Bll
 {
     public interface ITaskItemService
     {
-        Task<IList<TaskItemData>> GetTaskItems();
+        Task<IList<TaskItemData>> GetTaskItemsAsync();
         Task CreateTaskItemAsync(CreateTaskItemData createTaskItemData);
 
-        Task UpdateTaskItemStatus(int taskItemId, Dal.Entities.TaskStatus status);
+        Task UpdateTaskItemStatusAsync(int taskItemId, TaskItemStatus status);
     }
 
     public class TaskItemService(AppDbContext dbContext, IMapper mapper) : ITaskItemService
     {
-        public async Task<IList<TaskItemData>> GetTaskItems()
+        public async Task<IList<TaskItemData>> GetTaskItemsAsync()
         {
             return await dbContext.Tasks
+                .Include(t => t.User)
                 .ProjectTo<TaskItemData>(mapper.ConfigurationProvider)
                 .ToListAsync();
         }
@@ -35,7 +36,7 @@ namespace Onlab.Bll
             await dbContext.SaveChangesAsync();
         }
 
-        public async Task UpdateTaskItemStatus(int taskItemId, Dal.Entities.TaskStatus status)
+        public async Task UpdateTaskItemStatusAsync(int taskItemId, TaskItemStatus status)
         {
             var taskItem = await dbContext.Tasks.FindAsync(taskItemId);
             if (taskItem != null)

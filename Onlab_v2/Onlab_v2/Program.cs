@@ -4,6 +4,8 @@ using Onlab.Bll;
 using Onlab_v2.Components;
 using MudBlazor.Services;
 using MudBlazor;
+using System.Text.Json.Serialization;
+using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -30,10 +32,14 @@ builder.Services.AddAutoMapper(typeof(Onlab.Bll.Mappings.MappingProfile));
 
 builder.Services.AddBllServices();
 
-builder.Services.AddMudServices();
+//builder.Services.AddMudServices();
 
 // Add controllers for API endpoints
-builder.Services.AddControllers();
+builder.Services.AddControllers().AddJsonOptions(options =>
+{
+    //options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+});
 
 // Register Swagger services (must be before building the app)
 builder.Services.AddEndpointsApiExplorer();

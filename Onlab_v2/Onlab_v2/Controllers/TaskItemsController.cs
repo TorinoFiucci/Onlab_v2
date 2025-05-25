@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Onlab.Bll;
+using Onlab.Dal.Entities;
 using Onlab.Transfer;
 
 namespace Onlab_v2.Controllers
@@ -10,12 +11,12 @@ namespace Onlab_v2.Controllers
     public class TaskItemsController(ITaskItemService taskItemService) : ControllerBase
     {
         [HttpGet]
-        public async Task<IList<TaskItemData>> GetTaskItems()
+        public async Task<IList<TaskItemData>> GetTaskItemsAsync()
         {
-            return await taskItemService.GetTaskItems();
+            return await taskItemService.GetTaskItemsAsync();
         }
         [HttpPost]
-        public async Task<ActionResult> CreateTaskItem([FromBody] CreateTaskItemData createTaskItemData)
+        public async Task<ActionResult> CreateTaskItemAsync([FromBody] CreateTaskItemData createTaskItemData)
         {
             if (!ModelState.IsValid)
             {
@@ -26,13 +27,13 @@ namespace Onlab_v2.Controllers
         }
 
         [HttpPut("{taskItemId}/status")]
-        public async Task<IActionResult> UpdateTaskItemStatus(int taskItemId, [FromBody] Onlab.Dal.Entities.TaskStatus status)
+        public async Task<IActionResult> UpdateTaskItemStatus(int taskItemId, [FromBody]TaskItemStatus status)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
-            await taskItemService.UpdateTaskItemStatus(taskItemId, status);
+            await taskItemService.UpdateTaskItemStatusAsync(taskItemId, status);
             return Ok();
         }
     }
