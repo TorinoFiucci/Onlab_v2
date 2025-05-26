@@ -1,0 +1,214 @@
+﻿@page "/tasks"
+@inject ITaskItemsClient TaskItemsClient
+@inject IUsersClient UsersClient
+@inject HttpClient _MyApi
+
+@inject ISnackbar Snackbar
+
+@using Onlab.Transfer
+@using Onlab.Dal.Entities
+@using Onlab.Api
+@using Microsoft.AspNetCore.Components
+@using System.ComponentModel.DataAnnotations
+@using System.Text.Json.Serialization
+@using System.Text.Json
+@using MudBlazor
+
+
+<MudDropContainer T="TaskItemData"
+                  @ref="_dropContainer"
+                  Items="@taskItems"
+                  ItemDropped="OnTaskDropped"
+                  ItemsSelector="@((item, column) => item.Status.ToString() == column)"
+                  Class="pa-4">
+    <ChildContent>
+        <MudGrid GutterSize="3">
+            @foreach (var item in _sections)
+            {
+                <MudItem xs="12" sm="6" md="4">
+                    <MudPaper Elevation="1" Class="d-flex flex-column h-full pa-4 mud-background-gray rounded-lg">
+                        <MudToolBar Gutters="false">
+                            <MudText Typo="Typo.subtitle1"><b>@item.Status</b></MudText>
+                            <MudSpacer />
+                        </MudToolBar>
+
+                        <MudDropZone T="TaskItemData" Identifier="@item.Status.ToString()" Class="mud-height-full min-vh-25" Style="min-height:150px;">
+                            <ChildContent>
+                                @foreach (var task in taskItems.Where(t => t.Status == item.Status))
+                                {
+                                    <MudDynamicDropItem T="TaskItemData" Item="task">
+                                        <MudPaper Elevation="25" Class="pa-4 rounded-lg my-3 hover:shadow-lg transition duration-200 cursor-move position-relative">
+                                            <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                           Size="Size.Small"
+                                                           Style="position: absolute; top: 4px; right: 4px; color: #e57373;"
+                                                           OnClick="() => DeleteTaskItemAsync(task)" />
+                                            <MudText Typo="Typo.body1">@task.Description</MudText>
+                                            <MudText Typo="Typo.caption">Due: @task.DueDate?.ToShortDateString()</MudText>
+                                            <MudText Typo="Typo.caption">Assigned to: @task.User?.Name</MudText>
+                                        </MudPaper>
+                                    </MudDynamicDropItem>
+                                }
+                            </ChildContent>
+                        </MudDropZone>
+
+                        @* Csak a "New" oszlopban legyen Add Task *@
+                        @if (item.Status == TaskItemStatus.New)
+                        {
+                            if (item.NewTaskOpen)
+                            {
+                                <MudPaper Elevation="25" Class="pa-2 rounded-lg mt-3">
+                                    <MudTextField @bind-Value="item.NewTaskDescription" Required="true" Placeholder="Task Description" Underline="false" Margin="Margin.Dense" Class="mx-2" />
+                                    <MudDatePicker @bind-Date="item.NewDueDate" Required="true" Label="Due Date" Margin="Margin.Dense" Class="mx-2" />
+                                    <MudSelect T="int" Required="true" @bind-Value="item.NewUserId" Margin="Margin.Dense" Label="Assign to">
+                                        @foreach (var user in users)
+                                        {
+                                            <MudSelectItem Value="@user.Id">@user.Name</MudSelectItem>
+                                        }
+                                    </MudSelect>
+                                    <MudButton OnClick="@(() => CreateNewTaskItemAsync())" Size="Size.Small" Color="Color.Primary" FullWidth="true">Add Task</MudButton>
+                                </MudPaper>
+                            }
+                            else
+                            {
+                                <MudButton OnClick="@(() => item.NewTaskOpen = true)" StartIcon="@Icons.Material.Filled.Add" FullWidth="true" Class="rounded-lg py-2 mt-2">Add Task</MudButton>
+                            }
+                        }
+                    </MudPaper>
+                </MudItem>
+            }
+        </MudGrid>
+    </ChildContent>
+</MudDropContainer>
+
+
+@code {
+    public required MudDropContainer<TaskItemData> _dropContainer;
+    private IList<TaskItemData> taskItems = new List<TaskItemData>();
+    private CreateTaskItemData newTaskItem = new CreateTaskItemData();
+    private TaskItemStatus newTaskItemStatus = new TaskItemStatus();
+    private bool isLoading = true;
+    private IList<UserData> users = new List<UserData>();
+
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await GetAllTaskItemsAsync();
+            await GetAllUsersAsync();
+            //taskItems = await _MyApi.GetFromJsonAsync<IList<TaskItemData>>("/api/TaskItems");
+            //taskItems = await TaskItemsClient.GetTaskItemsAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading tasks: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task GetAllUsersAsync()
+    {
+        //users = await _MyApi.GetFromJsonAsync<IList<UserData>>("/api/Users");
+		users = await UsersClient.GetUsersAsync();
+		
+    }
+
+    private async Task GetAllTaskItemsAsync()
+    {
+        //taskItems = await _MyApi.GetFromJsonAsync<IList<TaskItemData>>("/api/TaskItems");
+        taskItems = await TaskItemsClient.GetTaskItemsAsync();
+    }
+
+    private async Task CreateNewTaskItemAsync()
+    {
+        var openSection = _sections.FirstOrDefault(s => s.NewTaskOpen);
+        if (openSection is null)
+            return;
+
+        newTaskItem.DueDate = openSection.NewDueDate ?? DateTime.Now.AddDays(7);
+        newTaskItem.Description = openSection.NewTaskDescription ?? string.Empty;
+        newTaskItem.UserId = openSection.NewUserId;
+
+        await _MyApi.PostAsJsonAsync("/api/TaskItems", newTaskItem);
+
+        // 🆕 Automatikusan zárjuk be az adott oszlop új feladat paneljét
+        openSection.NewTaskOpen = false;
+
+        // 🆕 Frissítsük a listaállapotot, ha szeretnéd látni az újonnan hozzáadott feladatot is:
+        await GetAllTaskItemsAsync();
+        _dropContainer?.Refresh();
+    }
+
+    private async Task OnTaskDropped(MudItemDropInfo<TaskItemData> dropInfo)
+    {
+        if (dropInfo.Item is null)
+            return; // vagy logolhatod, ha szeretnéd
+
+        if (Enum.TryParse<TaskItemStatus>(dropInfo.DropzoneIdentifier, out var newStatus))
+        {
+            dropInfo.Item.Status = newStatus;
+
+            await _MyApi.PutAsJsonAsync($"/api/TaskItems/{dropInfo.Item.Id}/status", newStatus);
+
+            await GetAllTaskItemsAsync();
+            _dropContainer?.Refresh();
+        }
+    }
+
+
+
+
+    private async Task UpdateTaskItemStatusAsync()
+    {
+        await _MyApi.PutAsJsonAsync("/api/TaskItems/{taskItemId}/status", newTaskItemStatus);
+    }
+
+    private async Task DeleteTaskItemAsync(TaskItemData task)
+    {
+        try
+        {
+            await TaskItemsClient.DeleteTaskItemAsync(task.Id); // ← API hívás
+
+            Snackbar.Add("Task deleted.", Severity.Success);
+
+            await GetAllTaskItemsAsync(); // újratöltés
+            _dropContainer?.Refresh();    // UI frissítés
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+    }
+
+
+    private List<KanBanSections> _sections = new()
+        {
+            new KanBanSections(TaskItemStatus.New, false, String.Empty, DateTime.Today, 0),
+            new KanBanSections(TaskItemStatus.InProgress, false, String.Empty, DateTime.Today, 0),
+            new KanBanSections(TaskItemStatus.Done, false, String.Empty, DateTime.Today, 0)
+        };
+
+    public class KanBanSections
+    {
+        public TaskItemStatus Status { get; init; }
+        public bool NewTaskOpen { get; set; }
+        public string NewTaskDescription { get; set; }
+        public DateTime? NewDueDate { get; set; } = DateTime.Now.AddDays(7); // Default to 7 days from now
+        public int NewUserId { get; set; } = 0; // Default to user ID 1
+
+        public KanBanSections(TaskItemStatus status, bool newTaskOpen, string newTaskDescription, DateTime? newDueDate, int newUserId)
+        {
+            Status = status;
+            NewTaskOpen = newTaskOpen;
+            NewTaskDescription = newTaskDescription;
+            NewDueDate = newDueDate;
+            NewUserId = newUserId;
+        }
+    }
+
+}
+

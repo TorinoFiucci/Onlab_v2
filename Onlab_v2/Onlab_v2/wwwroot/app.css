@@ -6,6 +6,13 @@ a, .btn-link {
     color: #006bb7;
 }
 
+.bi-nav-menu {
+    font-size: 1.1rem;
+    line-height: 2rem;
+    top: -1px;
+    position: relative;
+}
+
 .btn-primary {
     color: #fff;
     background-color: #1b6ec2;
