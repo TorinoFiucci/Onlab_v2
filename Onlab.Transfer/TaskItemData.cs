@@ -6,8 +6,8 @@ namespace Onlab.Transfer
     public class CreateTaskItemData
     {
         public string Description { get; set; } = string.Empty;
-        public DateOnly DueDate { get; set; } = DateOnly.FromDateTime(DateTime.Now);
-        public int UserId { get; set; } // To associate with a user upon creation
+        public DateTime? DueDate { get; set; } = DateTime.Now.AddDays(7); // Default due date is 7 days from now
+        public int UserId { get; set; } = 0; // Default user ID, should be set to a valid user ID when creating a task item
     }
 
     public class TaskItemData
@@ -17,7 +17,7 @@ namespace Onlab.Transfer
         [JsonPropertyName("description")]
         public string Description { get; set; } = string.Empty;
         [JsonPropertyName("dueDate")]
-        public DateOnly DueDate { get; set; }
+        public DateTime? DueDate { get; set; }
         [JsonPropertyName("user")]
         public required User User { get; set; }
         [JsonPropertyName("status")]

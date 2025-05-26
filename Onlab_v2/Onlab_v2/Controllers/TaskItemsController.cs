@@ -36,5 +36,13 @@ namespace Onlab_v2.Controllers
             await taskItemService.UpdateTaskItemStatusAsync(taskItemId, status);
             return Ok();
         }
+
+        [HttpDelete("{taskItemId}")]
+        public async Task<IActionResult> DeleteTaskItem(int taskItemId)
+        {
+            await taskItemService.DeleteTaskItemAsync(taskItemId);
+            return Ok();
+        }
+
     }
 }

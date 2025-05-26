@@ -19,7 +19,7 @@ namespace Onlab.Dal.Entities
         public string Description { get; set; } = string.Empty;
         public TaskItemStatus Status { get; set; } = TaskItemStatus.New; // Default status is New
 
-        public DateOnly DueDate { get; set; } = DateOnly.FromDateTime(DateTime.Now);
+        public DateTime? DueDate { get; set; } = DateTime.Now.AddDays(7); // Default due date is 7 days from now
 
         public int UserId { get; set; } // Foreign Key
         public required User User { get; set; } // Navigation Property

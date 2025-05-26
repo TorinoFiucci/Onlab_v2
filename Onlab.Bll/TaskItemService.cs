@@ -18,6 +18,8 @@ namespace Onlab.Bll
         Task CreateTaskItemAsync(CreateTaskItemData createTaskItemData);
 
         Task UpdateTaskItemStatusAsync(int taskItemId, TaskItemStatus status);
+        Task DeleteTaskItemAsync(int taskItemId);
+
     }
 
     public class TaskItemService(AppDbContext dbContext, IMapper mapper) : ITaskItemService
@@ -45,5 +47,16 @@ namespace Onlab.Bll
                 await dbContext.SaveChangesAsync();
             }
         }
+
+        public async Task DeleteTaskItemAsync(int taskItemId)
+        {
+            var taskItem = await dbContext.Tasks.FindAsync(taskItemId);
+            if (taskItem is null)
+                throw new KeyNotFoundException("Task item not found");
+
+            dbContext.Tasks.Remove(taskItem);
+            await dbContext.SaveChangesAsync();
+        }
+
     }
 }
