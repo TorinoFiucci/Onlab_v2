@@ -18,6 +18,8 @@ namespace Onlab.Transfer
         public string Role { get; set; } = string.Empty;
         [JsonPropertyName("bandName")]
         public string? BandName { get; set; }
+        [JsonPropertyName("bandId")]
+        public int? BandId { get; set; } // Optionally include BandId
         [JsonPropertyName("id")]
         public int Id { get; set; } // Assuming you want to include Id in the DTO
     }

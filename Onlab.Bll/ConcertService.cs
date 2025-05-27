@@ -16,6 +16,10 @@ namespace Onlab.Bll
     {
         Task<IList<ConcertData>> GetConcerts();
         Task CreateConcertAsync(CreateConcertData createConcertData);
+
+        Task UpdateConcertAsync(int concertId, ConcertData updateConcertData);
+
+        Task DeleteConcertAsync(int concertId);
     }
 
     public class ConcertService(AppDbContext dbContext, IMapper mapper) : IConcertService
@@ -23,6 +27,8 @@ namespace Onlab.Bll
         public async Task<IList<ConcertData>> GetConcerts()
         {
             return await dbContext.Concerts
+                .Include(c => c.Band)     
+                .Include(c => c.Setlist)
                 .ProjectTo<ConcertData>(mapper.ConfigurationProvider)
                 .ToListAsync();
         }
@@ -30,6 +36,28 @@ namespace Onlab.Bll
         {
             var concert = mapper.Map<Concert>(createConcertData);
             dbContext.Concerts.Add(concert);
+            await dbContext.SaveChangesAsync();
+        }
+
+        public async Task UpdateConcertAsync(int concertId, ConcertData updateConcertData)
+        {
+            var concert = await dbContext.Concerts.FindAsync(concertId);
+            if (concert == null)
+            {
+                throw new KeyNotFoundException("Concert not found");
+            }
+            mapper.Map(updateConcertData, concert);
+            await dbContext.SaveChangesAsync();
+        }
+
+        public async Task DeleteConcertAsync(int concertId)
+        {
+            var concert = await dbContext.Concerts.FindAsync(concertId);
+            if (concert == null)
+            {
+                throw new KeyNotFoundException("Concert not found");
+            }
+            dbContext.Concerts.Remove(concert);
             await dbContext.SaveChangesAsync();
         }
     }

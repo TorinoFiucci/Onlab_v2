@@ -29,6 +29,30 @@ namespace Onlab.Controllers // Assuming your main controllers are in this namesp
             return Ok();
         }
 
-        
+        [HttpPut("{setlistId}")]
+        public async Task<IActionResult> UpdateSetlist(int setlistId, [FromBody] SetlistData updateSetlistData)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+            await setlistService.UpdateSetlistAsync(setlistId, updateSetlistData);
+            return Ok();
+        }
+
+        [HttpDelete("{setlistId}")]
+        public async Task<IActionResult> DeleteSetlist(int setlistId)
+        {
+            try
+            {
+                await setlistService.DeleteSetlistAsync(setlistId);
+                return Ok();
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound("Setlist not found");
+            }
+        }
+
     }
 }

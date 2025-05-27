@@ -25,5 +25,10 @@ namespace Onlab.Transfer
         public string? BandName { get; set; } // To display the associated band's name
         [JsonPropertyName("bandId")]
         public int? BandId { get; set; } // Optionally include BandId
+
+        [JsonPropertyName("setlistId")]
+        public int? SetlistId { get; set; } // Foreign Key to the Setlist
+        [JsonPropertyName("setlist")]
+        public SetlistData? Setlist { get; set; } // Navigation property, if needed
     }
 }

@@ -10,7 +10,7 @@ namespace Onlab.Controllers
     [ApiController]
     public class BandsController(IBandService bandService) : ControllerBase
     {
-        
+
 
         [HttpGet]
         public async Task<IList<BandData>> GetBands()
@@ -19,7 +19,7 @@ namespace Onlab.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> CreateBand([FromBody]CreateBandData createBandData)
+        public async Task<IActionResult> CreateBand([FromBody] CreateBandData createBandData)
         {
             if (!ModelState.IsValid)
             {
@@ -28,6 +28,31 @@ namespace Onlab.Controllers
 
             await bandService.CreateBandAsync(createBandData);
             return Ok();
+        }
+
+        [HttpPut("{bandId}")]
+        public async Task<IActionResult> UpdateBand(int bandId, [FromBody] BandData updateBandData)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+            await bandService.UpdateBandAsync(bandId, updateBandData);
+            return Ok();
+        }
+
+        [HttpDelete("{bandId}")]
+        public async Task<IActionResult> DeleteBand(int bandId)
+        {
+            try
+            {
+                await bandService.DeleteBandAsync(bandId);
+                return Ok();
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound("Band not found");
+            }
         }
     }
 }

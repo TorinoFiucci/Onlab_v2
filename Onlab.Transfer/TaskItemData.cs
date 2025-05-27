@@ -19,7 +19,7 @@ namespace Onlab.Transfer
         [JsonPropertyName("dueDate")]
         public DateTime? DueDate { get; set; }
         [JsonPropertyName("user")]
-        public required User User { get; set; }
+        public required UserData User { get; set; }
         [JsonPropertyName("status")]
         public TaskItemStatus Status { get; set; }
         [JsonPropertyName("userId")]

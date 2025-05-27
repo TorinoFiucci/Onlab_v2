@@ -25,9 +25,9 @@ namespace Onlab_v2.Controllers
                 .ToListAsync();
         }
         [HttpPost]
-        public async Task<ActionResult> CreateUser([FromBody]CreateUserData createUserData) // Ideally, use CreateUserData DTO
+        public async Task<ActionResult> CreateUser([FromBody] CreateUserData createUserData) // Ideally, use CreateUserData DTO
         {
-            if(!ModelState.IsValid)
+            if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
@@ -39,8 +39,35 @@ namespace Onlab_v2.Controllers
             return Ok();
         }
 
-       
+        [HttpPut("{userId}")]
+        public async Task<IActionResult> UpdateUser(int userId, [FromBody] UserData updateUserData)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
 
-        
+            await userService.UpdateUserAsync(userId, updateUserData);
+
+            return Ok();
+        }
+
+        [HttpDelete("{userId}")]
+        public async Task<IActionResult> DeleteUser(int userId)
+        {
+            try
+            {
+                await userService.DeleteUserAsync(userId);
+                return Ok();
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound("User not found");
+            }
+
+
+
+
+        }
     }
 }

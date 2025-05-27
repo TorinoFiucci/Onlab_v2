@@ -13,7 +13,10 @@ namespace Onlab.Bll
     {
         Task<IList<SetlistData>> GetSetlistsAsync();
         Task CreateSetlistAsync(CreateSetlistData createSetlistData);
-        // Add other methods like GetSetlistByIdAsync, UpdateSetlistAsync, DeleteSetlistAsync as needed
+
+        Task UpdateSetlistAsync(int setlistId, SetlistData updateSetlistData);
+
+        Task DeleteSetlistAsync(int setlistId);
     }
 
     public class SetlistService(AppDbContext dbContext, IMapper mapper) : ISetlistService
@@ -33,6 +36,28 @@ namespace Onlab.Bll
             dbContext.Setlists.Add(setlistEntity);
             await dbContext.SaveChangesAsync();
 
+        }
+
+        public async Task UpdateSetlistAsync(int setlistId, SetlistData updateSetlistData)
+        {
+            var setlist = await dbContext.Setlists.FindAsync(setlistId);
+            if (setlist == null)
+            {
+                throw new KeyNotFoundException("Setlist not found");
+            }
+            mapper.Map(updateSetlistData, setlist);
+            await dbContext.SaveChangesAsync();
+        }
+
+        public async Task DeleteSetlistAsync(int setlistId)
+        {
+            var setlist = await dbContext.Setlists.FindAsync(setlistId);
+            if (setlist == null)
+            {
+                throw new KeyNotFoundException("Setlist not found");
+            }
+            dbContext.Setlists.Remove(setlist);
+            await dbContext.SaveChangesAsync();
         }
     }
 }

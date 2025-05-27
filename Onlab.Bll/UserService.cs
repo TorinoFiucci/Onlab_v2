@@ -17,6 +17,10 @@ namespace Onlab.Bll
     {
         Task<IList<UserData>> GetUsers();
         Task CreateUserAsync(CreateUserData createUserData);
+
+        Task UpdateUserAsync(int userId, UserData updateUserData);
+
+        Task DeleteUserAsync(int userId);
     }
 
 
@@ -41,7 +45,32 @@ namespace Onlab.Bll
             await dbContext.SaveChangesAsync();
         }
 
+        public async Task UpdateUserAsync(int userId, UserData updateUserData)
+        {
+            // Find the existing user by Id
+            var user = await dbContext.Users.FindAsync(userId);
+            if (user == null)
+            {
+                throw new KeyNotFoundException("User not found");
+            }
+            // Map the updated data to the existing user entity
+            mapper.Map(updateUserData, user);
+            // Save changes to the database
+            await dbContext.SaveChangesAsync();
+        }
 
+        public async Task DeleteUserAsync(int userId)
+        {
+            // Find the user by Id
+            var user = await dbContext.Users.FindAsync(userId);
+            if (user == null)
+            {
+                throw new KeyNotFoundException("User not found");
+            }
+            // Remove the user from the database
+            dbContext.Users.Remove(user);
+            await dbContext.SaveChangesAsync();
+        }
 
 
     }
