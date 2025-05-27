@@ -1,7 +1,175 @@
 ﻿@page "/users"
+@using Onlab.Api
+@using Onlab.Transfer
+@using Onlab_v2.Client.Shared
+@using MudBlazor
+@using System.Threading
 
-<h1>Users</h1>
+@inject IUsersClient UsersClient
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<MudText Typo="Typo.h4" GutterBottom="true">User Management</MudText>
+
+<MudTable T="UserData" ServerData="ServerReload"
+          Dense="true" Hover="true" Striped="true" @ref="_table">
+    <ToolBarContent>
+        <MudTextField Value="_searchString" ValueChanged="(string newValue) => OnSearch(newValue)"
+                      Placeholder="Search by Name or Role"
+                      Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Filled.Search"
+                      IconSize="Size.Medium"
+                      Immediate="true"
+                      Class="mt-0"
+                       />
+        <MudSpacer />
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Add"
+                   OnClick="OpenAddDialog">
+            Add User
+        </MudButton>
+    </ToolBarContent>
+    <HeaderContent>
+        <MudTh><MudTableSortLabel SortLabel="@nameof(UserData.Name)" SortBy="new Func<UserData, object>(x => x.Name)">Name</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel SortLabel="@nameof(UserData.Role)" SortBy="new Func<UserData, object>(x => x.Role)">Role</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel SortLabel="@nameof(UserData.BandName)" SortBy="new Func<UserData, object>(x => x.BandName)">Band</MudTableSortLabel></MudTh>
+        <MudTh Style="text-align:right">Actions</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="Name">@context.Name</MudTd>
+        <MudTd DataLabel="Role">@context.Role</MudTd>
+        <MudTd DataLabel="Band">@context.BandName</MudTd>
+        <MudTd DataLabel="Actions" Style="text-align:right">
+            
+            <MudIconButton Icon="@Icons.Material.Filled.Edit" Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" OnClick="@(() => OpenEditDialog(context))" />
+            <MudIconButton Icon="@Icons.Material.Filled.Delete" Variant="Variant.Filled" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteUser(context))" />
+        </MudTd>
+    </RowTemplate>
+    <PagerContent>
+        <MudTablePager />
+    </PagerContent>
+</MudTable>
 
 @code {
+    private MudTable<UserData> _table = new();
+    private IEnumerable<UserData> _users = new List<UserData>();
+    private string _searchString = "";
 
+    @using System.Linq.Expressions
+    // Add this for more advanced sorting if needed
+
+    // ... rest of your @using statements ...
+
+    @code {
+        // ... other existing code ...
+
+        private async Task<TableData<UserData>> ServerReload(TableState state, CancellationToken cancellationToken = default)
+        {
+            var usersFromApi = await UsersClient.GetUsersAsync() ?? new List<UserData>();
+            var viewUsers = usersFromApi.AsEnumerable(); // Work with IEnumerable for local operations
+
+            // Apply Search Filter
+            if (!string.IsNullOrWhiteSpace(_searchString))
+            {
+                viewUsers = viewUsers.Where(u =>
+                    (u.Name != null && u.Name.Contains(_searchString, StringComparison.OrdinalIgnoreCase)) ||
+                    (u.Role != null && u.Role.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
+                ).ToList();
+            }
+
+            // Apply Sorting
+            if (!string.IsNullOrEmpty(state.SortLabel))
+            {
+                // Create a generic sorter based on property name
+                // This is a simplified example. For complex types or custom sorting, you might need more specific logic.
+                Func<UserData, object> Sorter(string sortField)
+                {
+                    switch (sortField)
+                    {
+                        case nameof(UserData.Name):
+                            return x => x.Name;
+                        case nameof(UserData.Role):
+                            return x => x.Role ?? ""; // Handle potential nulls for sorting
+                        case nameof(UserData.BandName):
+                            return x => x.BandName ?? ""; // Handle potential nulls for sorting
+                        default:
+                            return x => x.Id; // Default sort by Id if label is unknown
+                    }
+                }
+
+                if (state.SortDirection == SortDirection.Ascending)
+                {
+                    viewUsers = viewUsers.OrderBy(Sorter(state.SortLabel)).ToList();
+                }
+                else
+                {
+                    viewUsers = viewUsers.OrderByDescending(Sorter(state.SortLabel)).ToList();
+                }
+            }
+
+            int totalItems = viewUsers.Count();
+
+            // Apply Paging
+            var pagedData = viewUsers.Skip(state.Page * state.PageSize).Take(state.PageSize).ToList();
+
+            _users = pagedData; // Update your component's list if you bind directly to it elsewhere, though MudTable uses 'Items' from TableData
+
+            return new TableData<UserData>() { TotalItems = totalItems, Items = pagedData };
+        }
+
+        // ... rest of your methods ...
+    }
+
+    private void OnSearch(string text)
+    {
+        _searchString = text;
+        _table.ReloadServerData();
+    }
+
+    private async Task OpenAddDialog()
+    {
+        var dialog = await DialogService.ShowAsync<UserFormDialog>("Create New User");
+        var result = await dialog.Result;
+        if (!result.Canceled)
+        {
+            await _table.ReloadServerData();
+            Snackbar.Add("User created!", Severity.Success);
+        }
+    }
+
+    // CHANGED: Method now accepts UserData instead of userId
+    private async Task OpenEditDialog(UserData userToEdit)
+    {
+        // Pass the full UserData object to the dialog
+        var parameters = new DialogParameters { ["UserToEdit"] = userToEdit };
+        var dialog = await DialogService.ShowAsync<UserFormDialog>("Edit User", parameters);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            await _table.ReloadServerData();
+            Snackbar.Add("User updated!", Severity.Success);
+        }
+    }
+
+        private async Task DeleteUser(UserData user)
+        {
+    var parameters = new DialogParameters
+        {
+            { "ContentText", $"Are you sure you want to delete '{user.Name}'?" },
+            { "SubmitButtonText", "Delete" }, // <<<< CORRECTED KEY
+            { "CancelButtonText", "Cancel" }, // Explicitly setting this, though it has a default
+            { "Color", Color.Error },
+            { "Icon", Icons.Material.Filled.DeleteForever } // Ensure your ConfirmationDialog.razor has this Icon parameter
+        };
+    var dialog = await DialogService.ShowAsync<ConfirmationDialog>("Confirm Deletion", parameters);
+    var result = await dialog.Result;
+    if (!result.Canceled)
+    {
+        await UsersClient.DeleteUserAsync(user.Id);
+        await _table.ReloadServerData();
+        Snackbar.Add("User deleted!", Severity.Warning);
+    }
+        }
 }

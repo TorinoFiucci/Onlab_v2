@@ -1,0 +1,109 @@
+﻿@* UserFormDialog.razor *@
+
+@using Onlab.Api
+@using Onlab.Transfer
+@using MudBlazor
+
+
+
+@inject IUsersClient UsersClient // Still needed for CreateUserAsync and UpdateUserAsync
+@inject IBandsClient BandsClient
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">@_title</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudForm @ref="_form" @bind-IsValid="_isValid" Model="@_userModel">
+            <MudTextField @bind-Value="_userModel.Name" For="@(() => _userModel.Name)"
+            Label="Full Name" Required="true" RequiredError="Name is required." />
+
+            <MudSelect T="string" @bind-Value="_userModel.Role" Label="Role" Required="true">
+                <MudSelectItem Value="@("Manager")" />
+                <MudSelectItem Value="@("Musician")" />
+                @* Add other roles as needed *@
+            </MudSelect>
+
+            <MudSelect T="int?" @bind-Value="_userModel.BandId" Label="Band (Optional)">
+                <MudSelectItem Value="@((int?)null)">-- No Band --</MudSelectItem> @* Option to unassign band *@
+                @foreach (var band in _availableBands)
+                {
+                    <MudSelectItem Value="@((int?)band.Id)">@band.Name</MudSelectItem>
+                }
+            </MudSelect>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit" Disabled="@(!_isValid)">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+	[CascadingParameter]
+    IMudDialogInstance? MudDialog { get; set; }
+
+    // CHANGED: Parameter is now UserData, not just UserId
+    [Parameter]
+    public UserData? UserToEdit { get; set; }
+
+    private string _title = "";
+    private MudForm? _form;
+    private bool _isValid;
+    private UserData _userModel = new(); // This will hold the user for the form
+    private IEnumerable<BandData> _availableBands = new List<BandData>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _availableBands = await BandsClient.GetBandsAsync();
+
+        if (UserToEdit == null) // This is a "Create" operation
+        {
+            _title = "Create New User";
+            _userModel = new UserData();
+        }
+        else // This is an "Edit" operation
+        {
+            _title = "Edit User";
+            // Clone the passed-in user object to avoid modifying the original
+            // object from the table directly until "Save" is clicked.
+            _userModel = new UserData
+                {
+                    Id = UserToEdit.Id,
+                    Name = UserToEdit.Name,
+                    Role = UserToEdit.Role,
+                    BandId = UserToEdit.BandId,
+                    BandName = UserToEdit.BandName // Keep BandName for consistency, though not directly edited
+                };
+        }
+    }
+
+    private async Task Submit()
+    {
+        await _form!.Validate();
+        if (!_isValid) return;
+
+        try
+        {
+            if (_userModel.Id == 0) // New user (Id is 0 by default for a new UserData())
+            {
+                // You might need a CreateUserData DTO if your API expects it
+                var createDto = new CreateUserData { Name = _userModel.Name, Role = _userModel.Role, BandId = _userModel.BandId };
+                await UsersClient.CreateUserAsync(createDto);
+            }
+            else // Existing user
+            {
+                // The _userModel here contains the Id and the modified fields
+                await UsersClient.UpdateUserAsync(_userModel.Id, _userModel);
+            }
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+    }
+
+    void Cancel() => MudDialog.Cancel();
+}
