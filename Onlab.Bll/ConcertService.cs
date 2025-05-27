@@ -20,6 +20,8 @@ namespace Onlab.Bll
         Task UpdateConcertAsync(int concertId, ConcertData updateConcertData);
 
         Task DeleteConcertAsync(int concertId);
+
+        Task<IList<ConcertData>> GetConcertsByBandIdAsync(int bandId);
     }
 
     public class ConcertService(AppDbContext dbContext, IMapper mapper) : IConcertService
@@ -28,6 +30,15 @@ namespace Onlab.Bll
         {
             return await dbContext.Concerts
                 .Include(c => c.Band)     
+                .Include(c => c.Setlist)
+                .ProjectTo<ConcertData>(mapper.ConfigurationProvider)
+                .ToListAsync();
+        }
+        public async Task<IList<ConcertData>> GetConcertsByBandIdAsync(int bandId)
+        {
+            return await dbContext.Concerts
+                .Where(c => c.BandId == bandId)
+                .Include(c => c.Band)
                 .Include(c => c.Setlist)
                 .ProjectTo<ConcertData>(mapper.ConfigurationProvider)
                 .ToListAsync();

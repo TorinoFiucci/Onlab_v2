@@ -1,6 +1,155 @@
 ﻿@page "/setlists"
+@using Onlab.Transfer
+@using Onlab_v2.Client.Shared
+@using MudBlazor
+@using System.Threading
+@using Onlab.Api
 
-<h1>Setlists</h1>
+@inject ISetlistsClient SetlistsClient
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject NavigationManager NavigationManager
+
+<MudText Typo="Typo.h4" GutterBottom="true">Setlist Management</MudText>
+<MudText Typo="Typo.body2" Class="mb-4">Create setlists, edit details, link to concerts, and manage song content.</MudText>
+
+<MudTable T="SetlistData" ServerData="ServerReload"
+          Dense="true" Hover="true" Striped="true" @ref="_table">
+    <ToolBarContent>
+        <MudTextField Value="_searchString"
+                      ValueChanged="(string s) => OnSearch(s)"
+                      Placeholder="Search by Name or Band"
+                      Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Filled.Search"
+                      IconSize="Size.Medium"
+                      Immediate="true" Class="mt-0" />
+        <MudSpacer />
+        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Add"
+                   OnClick="OpenAddDialog">
+            Add New Setlist
+        </MudButton>
+    </ToolBarContent>
+    <HeaderContent>
+        <MudTh><MudTableSortLabel SortLabel="@nameof(SetlistData.Name)" T="SetlistData">Name</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel SortLabel="@nameof(SetlistData.BandName)" T="SetlistData">Band</MudTableSortLabel></MudTh>
+        <MudTh>Songs (Preview from Description)</MudTh>
+        <MudTh><MudTableSortLabel SortLabel="ConcertVenue" T="SetlistData">Linked Concert</MudTableSortLabel></MudTh> @* Changed SortLabel for example *@
+        <MudTh Style="text-align:right">Actions</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="Name">@context.Name</MudTd>
+        <MudTd DataLabel="Band">@context.BandName</MudTd>
+        <MudTd DataLabel="Songs (Preview)">
+            <MudText MaxLines="2" Typo="Typo.body2">@context.Description</MudText>
+        </MudTd>
+        <MudTd DataLabel="Linked Concert">
+            @if (context.Concert != null)
+            {
+                <MudText Typo="Typo.body2">@context.Concert.Venue - @context.Concert.Date.ToShortDateString()</MudText>
+            }
+            else
+            {
+                <MudText Typo="Typo.caption">N/A</MudText>
+            }
+        </MudTd>
+        <MudTd DataLabel="Actions" Style="text-align:right">
+            <MudIconButton Icon="@Icons.Material.Filled.QueueMusic" Variant="Variant.Text" Color="Color.Default" Size="Size.Small" OnClick="@(() => EditSetlistSongs(context.Id))" Title="Edit Songs/Content" />
+            <MudIconButton Icon="@Icons.Material.Filled.Link" Variant="Variant.Text" Color="Color.Primary" Size="Size.Small" OnClick="@(() => OpenEditMetadataDialog(context))" Title="Edit Details & Concert Link" />
+            <MudIconButton Icon="@Icons.Material.Filled.Delete" Variant="Variant.Text" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteSetlist(context))" Title="Delete Setlist" />
+        </MudTd>
+    </RowTemplate>
+    <PagerContent>
+        <MudTablePager />
+    </PagerContent>
+</MudTable>
+
 @code {
+    private MudTable<SetlistData> _table = new();
+    private IEnumerable<SetlistData> _allSetlists = new List<SetlistData>();
+    private string _searchString = "";
 
+    private async Task<TableData<SetlistData>> ServerReload(TableState state, CancellationToken cancellationToken = default)
+    {
+        _allSetlists = await SetlistsClient.GetSetlistsAsync() ?? new List<SetlistData>();
+        var viewSetlists = _allSetlists.AsEnumerable();
+
+        if (!string.IsNullOrWhiteSpace(_searchString))
+        {
+            viewSetlists = viewSetlists.Where(s =>
+                (s.Name != null && s.Name.Contains(_searchString, StringComparison.OrdinalIgnoreCase)) ||
+                (s.BandName != null && s.BandName.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
+            ).ToList();
+        }
+
+        if (!string.IsNullOrEmpty(state.SortLabel))
+        {
+            Func<SetlistData, object?> Sorter(string sortField)
+            {
+                switch (sortField)
+                {
+                    case nameof(SetlistData.Name): return x => x.Name;
+                    case nameof(SetlistData.BandName): return x => x.BandName;
+                    case "ConcertVenue": return x => x.Concert?.Venue; // Sort by nested property
+                    default: return x => x.Id;
+                }
+            }
+            viewSetlists = state.SortDirection == SortDirection.Ascending
+                ? viewSetlists.OrderBy(Sorter(state.SortLabel))
+                : viewSetlists.OrderByDescending(Sorter(state.SortLabel));
+        }
+
+        var totalItems = viewSetlists.Count();
+        var pagedData = viewSetlists.Skip(state.Page * state.PageSize).Take(state.PageSize).ToList();
+        return new TableData<SetlistData>() { TotalItems = totalItems, Items = pagedData };
+    }
+
+    private void OnSearch(string text)
+    {
+        _searchString = text;
+        _table.ReloadServerData();
+    }
+
+    private async Task OpenAddDialog()
+    {
+        var dialog = await DialogService.ShowAsync<SetlistFormDialog>("Create New Setlist");
+        var result = await dialog.Result;
+        if (!result.Canceled) { await _table.ReloadServerData(); }
+    }
+
+    private async Task OpenEditMetadataDialog(SetlistData setToEdit)
+    {
+        var parameters = new DialogParameters { ["SetlistToEdit"] = setToEdit };
+        var dialog = await DialogService.ShowAsync<SetlistFormDialog>("Edit Setlist Details", parameters);
+        var result = await dialog.Result;
+        if (!result.Canceled) { await _table.ReloadServerData(); }
+    }
+
+    private void EditSetlistSongs(int setlistId)
+    {
+        NavigationManager.NavigateTo($"/setlists/editor/{setlistId}");
+    }
+
+    private async Task DeleteSetlist(SetlistData setlist)
+    {
+        var parameters = new DialogParameters {
+            { "ContentText", $"Delete setlist '{setlist.Name}'? This also deletes its song content (from Description)." },
+            { "SubmitButtonText", "Delete" }, { "Color", Color.Error }, { "Icon", Icons.Material.Filled.DeleteForever }
+        };
+        var dialog = await DialogService.ShowAsync<ConfirmationDialog>($"Delete Setlist: {setlist.Name}", parameters);
+        var result = await dialog.Result;
+        if (!result.Canceled)
+        {
+            try
+            {
+                await SetlistsClient.DeleteSetlistAsync(setlist.Id);
+                Snackbar.Add("Setlist deleted!", Severity.Success);
+                await _table.ReloadServerData();
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error deleting setlist: {ex.Message}", Severity.Error);
+            }
+        }
+    }
 }

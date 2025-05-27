@@ -16,6 +16,12 @@ namespace Onlab.Controllers // Assuming your main controllers are in this namesp
             return await setlistService.GetSetlistsAsync();
         }
 
+        [HttpGet("byband/{bandId}")]
+        public async Task<IList<SetlistData>> GetSetlistsByBandId(int bandId)
+        {
+            return await setlistService.GetSetlistsByBandIdAsync(bandId);
+        }
+
         [HttpPost]
         public async Task<ActionResult> CreateSetlist([FromBody] CreateSetlistData createSetlistData)
         {

@@ -1,0 +1,91 @@
+﻿@using Onlab.Transfer
+@using MudBlazor
+@using Onlab.Api
+
+@inject IBandsClient BandsClient
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">@_title</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudForm @ref="_form" @bind-IsValid="_isValid" Model="@_bandModel">
+            <MudTextField @bind-Value="_bandModel.Name" For="@(() => _bandModel.Name)"
+                          Label="Band Name" Required="true" RequiredError="Band Name is required." />
+
+            <MudTextField @bind-Value="_bandModel.Genre" For="@(() => _bandModel.Genre)"
+                          Label="Genre" Required="true" RequiredError="Genre is required." />
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit" Disabled="@(!_isValid)">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    IMudDialogInstance? MudDialog { get; set; } 
+
+    [Parameter]
+    public BandData? BandToEdit { get; set; } // Receives the full BandData object for editing
+
+    private string _title = "";
+    private MudForm? _form;
+    private bool _isValid;
+    private BandData _bandModel = new(); // Local model for the form
+
+    protected override void OnInitialized()
+    {
+        if (BandToEdit == null) // Create mode
+        {
+            _title = "Create New Band";
+            _bandModel = new BandData(); // Initialize for a new band
+        }
+        else // Edit mode
+        {
+            _title = $"Edit Band: {BandToEdit.Name}";
+            // Clone the BandToEdit object to avoid modifying the original table data directly
+            _bandModel = new BandData
+                {
+                    Id = BandToEdit.Id,
+                    Name = BandToEdit.Name,
+                    Genre = BandToEdit.Genre
+                    // If BandData had more properties, copy them here
+                };
+        }
+    }
+
+    private async Task Submit()
+    {
+        if (_form is null) return;
+
+        await _form.Validate();
+        if (!_isValid) return;
+
+        try
+        {
+            if (_bandModel.Id == 0) // New band
+            {
+                // Create a DTO for creation if your API expects it (e.g., CreateBandData)
+                var createDto = new CreateBandData { Name = _bandModel.Name, Genre = _bandModel.Genre };
+                await BandsClient.CreateBandAsync(createDto);
+                Snackbar.Add("Band created successfully!", Severity.Success);
+            }
+            else // Existing band
+            {
+                // _bandModel now contains the ID and the modified fields
+                await BandsClient.UpdateBandAsync(_bandModel.Id, _bandModel);
+                Snackbar.Add("Band updated successfully!", Severity.Success);
+            }
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+    }
+
+    void Cancel() => MudDialog.Cancel();
+}

@@ -17,13 +17,25 @@ namespace Onlab.Bll
         Task UpdateSetlistAsync(int setlistId, SetlistData updateSetlistData);
 
         Task DeleteSetlistAsync(int setlistId);
+
+        Task<IList<SetlistData>> GetSetlistsByBandIdAsync(int bandId);
     }
 
     public class SetlistService(AppDbContext dbContext, IMapper mapper) : ISetlistService
     {
         public async Task<IList<SetlistData>> GetSetlistsAsync()
         {
-            return await dbContext.Setlists // Assuming AppDbContext has DbSet<Setlist> Setlists
+            return await dbContext.Setlists
+                .Include(s => s.Band)
+                .Include(s => s.Concert)// Assuming AppDbContext has DbSet<Setlist> Setlists
+                .ProjectTo<SetlistData>(mapper.ConfigurationProvider)
+                .ToListAsync();
+        }
+
+        public async Task<IList<SetlistData>> GetSetlistsByBandIdAsync(int bandId)
+        {
+            return await dbContext.Setlists
+                .Where(s => s.BandId == bandId) // Assuming Setlist has a BandId property
                 .ProjectTo<SetlistData>(mapper.ConfigurationProvider)
                 .ToListAsync();
         }

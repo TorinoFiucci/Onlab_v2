@@ -19,7 +19,8 @@ namespace Onlab.Dal.Entities
         public int? BandId { get; set; }
         public Band? Band { get; set; }
 
-        public int? SetlistId { get; set; } // Foreign Key to the Setlist
-        public virtual Setlist? Setlist { get; set; } // Navigation property
+        //public int? SetlistId { get; set; } // Foreign Key to the Setlist
+        
+        public virtual Setlist? Setlist { get; set; }
     }
 }

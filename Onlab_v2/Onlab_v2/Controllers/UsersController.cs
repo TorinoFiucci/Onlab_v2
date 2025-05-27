@@ -14,16 +14,20 @@ namespace Onlab_v2.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class UsersController(AppDbContext context, IMapper mapper, IUserService userService) : ControllerBase
+    public class UsersController(IUserService userService) : ControllerBase
     {
         [HttpGet]
         public async Task<IList<UserData>> GetUsers()
         {
             // Access AppDbContext via the _context field
-            return await context.Users
-                .ProjectTo<UserData>(mapper.ConfigurationProvider)
-                .ToListAsync();
+            return await userService.GetUsers();
         }
+        [HttpGet("byband/{bandId}")]
+        public async Task<IList<UserData>> GetUsersByBandId(int bandId)
+        {
+            return await userService.GetUsersByBandIdAsync(bandId);
+        }
+
         [HttpPost]
         public async Task<ActionResult> CreateUser([FromBody] CreateUserData createUserData) // Ideally, use CreateUserData DTO
         {

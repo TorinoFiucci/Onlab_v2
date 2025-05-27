@@ -20,6 +20,8 @@ namespace Onlab.Transfer
         public string Description { get; set; } = string.Empty;
         [JsonPropertyName("bandname")]
         public string? BandName { get; set; } // To display the associated band's name
+        [JsonPropertyName("bandId")]
+        public int? BandId { get; set; } // Optionally include BandId
 
         // The ID of the concert this setlist is assigned to, if any.
         [JsonPropertyName("concertId")]

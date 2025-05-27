@@ -1,0 +1,181 @@
+﻿@using Onlab.Transfer
+@using Onlab.Api
+@using MudBlazor
+
+@inject ISetlistsClient SetlistsClient
+@inject IBandsClient BandsClient
+@inject IConcertsClient ConcertsClient
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">@_title</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudForm @ref="_form" @bind-IsValid="_isValid" Model="@_setlistModel">
+            <MudTextField @bind-Value="_setlistModel.Name" For="@(() => _setlistModel.Name)"
+                          Label="Setlist Name" Required="true" RequiredError="Name is required." />
+
+            <MudSelect T="int?" @bind-Value="_setlistModel.BandId"
+                       @bind-Value:after="OnBandSelectionChangedAsync"
+                       Label="Associated Band"
+                       For="@(() => _setlistModel.BandId)"
+                       Required="true" RequiredError="Band is required.">
+                @if (_availableBands.Any())
+                {
+                    foreach (var band in _availableBands)
+                    {
+                                <MudSelectItem Value="@((int?)band.Id)">@band.Name</MudSelectItem>
+                    }
+                }
+                else
+                {
+                         <MudText Color="Color.Warning" Class="pa-2">No bands available. Create a band first.</MudText>
+                }
+            </MudSelect>
+
+            @if (_isEditMode) // Only show Concert selection in Edit mode
+            {
+                <MudSelect T="int?" @bind-Value="_setlistModel.ConcertId" Label="Link to Concert (Optional)" For="@(() => _setlistModel.ConcertId)" Disabled="@(_setlistModel.BandId == null)">
+                    <MudSelectItem Value="@((int?)null)">-- No Specific Concert --</MudSelectItem>
+                    @if (_availableConcertsForBand.Any())
+                    {
+                        foreach (var concert in _availableConcertsForBand)
+                        {
+                            <MudSelectItem Value="@((int?)concert.Id)">@concert.Venue - @concert.Date.ToShortDateString()</MudSelectItem>
+                        }
+                    }
+                    else if (_setlistModel.BandId != null)
+                    {
+                        <MudText Color="Color.Info" Typo="Typo.caption" Class="pa-2">No concerts available for the selected band.</MudText>
+                    }
+                </MudSelect>
+            }
+
+            <MudTextField Value="@_setlistModel.Description"
+                          Label="Songs / Content (Preview)" Lines="5" ReadOnly="true" Variant="Variant.Outlined"
+                          HelperText="Detailed song content is managed on the 'Edit Songs' page." Class="mt-3" />
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit" Disabled="@(!_isValid || _setlistModel.BandId == null)">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    IMudDialogInstance? MudDialog { get; set; } 
+
+    [Parameter]
+    public SetlistData? SetlistToEdit { get; set; }
+
+    private string _title = "";
+    private MudForm? _form;
+    private bool _isValid;
+    private SetlistData _setlistModel = new(); // Using SetlistData as the form model
+    private IEnumerable<BandData> _availableBands = new List<BandData>();
+    private IEnumerable<ConcertData> _availableConcertsForBand = new List<ConcertData>();
+    private bool _isEditMode = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _availableBands = await BandsClient.GetBandsAsync() ?? new List<BandData>();
+
+        if (SetlistToEdit == null) // Create mode
+        {
+            _title = "Create New Setlist";
+            _isEditMode = false;
+            _setlistModel = new SetlistData() { Description = "" }; // Description starts empty
+        }
+        else // Edit mode
+        {
+            _title = $"Edit Details for: {SetlistToEdit.Name}";
+            _isEditMode = true;
+            _setlistModel = new SetlistData // Clone for editing
+                {
+                    Id = SetlistToEdit.Id,
+                    Name = SetlistToEdit.Name,
+                    Description = SetlistToEdit.Description, // Preserve current Description (songs)
+                    BandId = SetlistToEdit.BandId,
+                    BandName = SetlistToEdit.BandName, // For display consistency if needed
+                    ConcertId = SetlistToEdit.ConcertId, // Allow editing this link
+                    Concert = SetlistToEdit.Concert // Preserve concert DTO if available
+                };
+            if (_setlistModel.BandId.HasValue)
+            {
+                await LoadConcertsForBand(_setlistModel.BandId.Value);
+            }
+        }
+    }
+
+    // In SetlistFormDialog.razor @code block
+
+    // Renamed for clarity and made async Task
+    private async Task OnBandSelectionChangedAsync()
+    {
+        // _setlistModel.BandId is already updated due to @bind-Value
+        int? selectedBandId = _setlistModel.BandId;
+
+        if (_isEditMode)
+        {
+            // When band changes in edit mode, clear the previously selected concert for the old band.
+            _setlistModel.ConcertId = null;
+        }
+        _availableConcertsForBand = new List<ConcertData>(); // Clear previous concerts
+        if (selectedBandId.HasValue)
+        {
+            await LoadConcertsForBand(selectedBandId.Value);
+        }
+        // StateHasChanged(); // May not be strictly necessary here as @bind-Value:after and subsequent async operations
+        // often trigger a re-render. But add it if the concert dropdown doesn't update.
+    }
+
+    private async Task LoadConcertsForBand(int bandId)
+    {
+        _availableConcertsForBand = await ConcertsClient.GetConcertsByBandIdAsync(bandId) ?? new List<ConcertData>();
+        // Call StateHasChanged here if the concert dropdown isn't updating after this load
+        StateHasChanged();
+    }
+
+    private async Task Submit()
+    {
+        if (_form == null) return;
+        await _form.Validate();
+        if (!_isValid || _setlistModel.BandId == null) return;
+
+        try
+        {
+            if (!_isEditMode) // New setlist (ID will be 0)
+            {
+                // Using CreateSetlistData as provided by user (no ConcertId)
+                var createDto = new CreateSetlistData
+                    {
+                        Name = _setlistModel.Name,
+                        Description = _setlistModel.Description, // Will be initially empty
+                        BandId = _setlistModel.BandId
+                    };
+                // NSwag client for POST usually returns FileResponse, we assume API returns the created DTO or ID
+                // For simplicity, we'll assume the API handles it and we just reload.
+                // If your CreateSetlistAsync returns the created SetlistData, you can use it.
+                var response = await SetlistsClient.CreateSetlistAsync(createDto);
+                Snackbar.Add("Setlist created! Edit its songs on the next page.", Severity.Success);
+                MudDialog.Close(DialogResult.Ok(true)); // Indicate success
+            }
+            else // Existing setlist - update metadata INCLUDING ConcertId
+            {
+                // _setlistModel is SetlistData, which includes ConcertId.
+                // The UpdateSetlistAsync should accept SetlistData.
+                await SetlistsClient.UpdateSetlistAsync(_setlistModel.Id, _setlistModel);
+                Snackbar.Add("Setlist details updated!", Severity.Success);
+                MudDialog.Close(DialogResult.Ok(true));
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+    }
+
+    void Cancel() => MudDialog.Cancel();
+}

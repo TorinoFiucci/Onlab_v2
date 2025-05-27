@@ -1,0 +1,203 @@
+﻿@page "/bands/details/{BandId:int}"
+@using Onlab.Transfer
+@using MudBlazor
+@using System.Threading
+@using Onlab.Api
+
+@inject IBandsClient BandsClient
+@inject IUsersClient UsersClient
+@inject IConcertsClient ConcertsClient
+@inject ISetlistsClient SetlistsClient
+@inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+	@if (_loadingBand)
+	{
+		<MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+	}
+	else if (_band == null)
+	{
+		<MudAlert Severity="Severity.Error">Band with ID @BandId not found after checking all available bands.</MudAlert>
+		<MudText Class="mt-2" Typo="Typo.caption">Note: Fetching a specific band by ID from the API (e.g., GetBandByIdAsync) would be more efficient.</MudText>
+		<MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => NavigationManager.NavigateTo("/bands"))" Class="mt-4">Back to Bands List</MudButton>
+	}
+	else
+	{
+		<MudText Typo="Typo.h4" GutterBottom="true">@_band.Name - Details</MudText>
+
+		<MudTabs Elevation="3" Rounded="true" ApplyEffects="true" PanelClass="pa-4 mt-2">
+			<MudTabPanel Text="Overview" Icon="@Icons.Material.Filled.Info">
+				<MudSimpleTable Hover="true">
+					<tbody>
+						<tr>
+							<td><MudText Typo="Typo.subtitle1">ID:</MudText></td>
+							<td><MudText>@_band.Id</MudText></td>
+						</tr>
+						<tr>
+							<td><MudText Typo="Typo.subtitle1">Name:</MudText></td>
+							<td><MudText>@_band.Name</MudText></td>
+						</tr>
+						<tr>
+							<td><MudText Typo="Typo.subtitle1">Genre:</MudText></td>
+							<td><MudText>@_band.Genre</MudText></td>
+						</tr>
+					</tbody>
+				</MudSimpleTable>
+			</MudTabPanel>
+
+			<MudTabPanel Text="Members" Icon="@Icons.Material.Filled.Group">
+				@if (_loadingMembers)
+				{
+					<MudProgressCircular Color="Color.Secondary" Indeterminate="true" />
+				}
+				else if (_bandMembers == null || !_bandMembers.Any())
+				{
+					<MudText>No members assigned to this band.</MudText>
+				}
+				else
+				{
+					<MudList T="UserData" Clickable="false" Dense="true">
+						@foreach (var member in _bandMembers)
+						{
+							<MudListItem Icon="@Icons.Material.Filled.Person" Text="@member.Name">
+								<NestedList>
+									<MudListItem Secondary="@($"Role: {member.Role}")" />
+								</NestedList>
+							</MudListItem>
+						}
+					</MudList>
+				}
+			</MudTabPanel>
+
+			<MudTabPanel Text="Concerts" Icon="@Icons.Material.Filled.Event">
+				@if (_loadingConcerts)
+				{
+					<MudProgressCircular Color="Color.Secondary" Indeterminate="true" />
+				}
+				else if (_bandConcerts == null || !_bandConcerts.Any())
+				{
+					<MudText>No concerts scheduled for this band.</MudText>
+				}
+				else
+				{
+					<MudList T="ConcertData" Clickable="false" Dense="true">
+						@foreach (var concert in _bandConcerts)
+						{
+							<MudListItem Icon="@Icons.Material.Filled.Place" Text="@concert.Venue">
+								<NestedList>
+									<MudListItem Secondary="@($"Date: {concert.Date:yyyy-MM-dd}")" />
+									@if (concert.Setlist != null)
+									{
+										<MudListItem Secondary="@($"Setlist: {concert.Setlist.Name}")" />
+									}
+								</NestedList>
+							</MudListItem>
+						}
+					</MudList>
+				}
+			</MudTabPanel>
+
+			<MudTabPanel Text="Setlists" Icon="@Icons.Material.Filled.QueueMusic">
+				@if (_loadingSetlists)
+				{
+					<MudProgressCircular Color="Color.Secondary" Indeterminate="true" />
+				}
+				else if (_bandSetlists == null || !_bandSetlists.Any())
+				{
+					<MudText>No setlists available for this band.</MudText>
+				}
+				else
+				{
+					<MudList T="SetlistData" Clickable="false" Dense="true">
+						@foreach (var setlist in _bandSetlists)
+						{
+							<MudListItem Icon="@Icons.Material.Filled.ListAlt" Text="@setlist.Name">
+								<NestedList>
+									@if (!string.IsNullOrEmpty(setlist.Description))
+									{
+										<MudListItem Text="@setlist.Description" Dense="true" Gutters="false" />
+									}
+								</NestedList>
+							</MudListItem>
+
+						}
+					</MudList>
+				}
+			</MudTabPanel>
+		</MudTabs>
+
+		<MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="@(() => NavigationManager.NavigateTo("/bands"))" Class="mt-6">Back to Bands List</MudButton>
+	}
+</MudContainer>
+
+@code {
+	[Parameter]
+	public int BandId { get; set; }
+
+	private BandData? _band;
+	private IEnumerable<UserData>? _bandMembers;
+	private IEnumerable<ConcertData>? _bandConcerts;
+	private IEnumerable<SetlistData>? _bandSetlists;
+
+	private bool _loadingBand = true;
+	private bool _loadingMembers = false;
+	private bool _loadingConcerts = false;
+	private bool _loadingSetlists = false;
+
+	protected override async Task OnParametersSetAsync()
+	{
+		await LoadBandDetails();
+	}
+
+	private async Task LoadBandDetails()
+	{
+		_loadingBand = true;
+		_band = null;
+		_bandMembers = null;
+		_bandConcerts = null;
+		_bandSetlists = null;
+		StateHasChanged();
+
+		try
+		{
+			// WORKAROUND: Fetch all bands and find the one by ID
+			var allBands = await BandsClient.GetBandsAsync() ?? new List<BandData>();
+			_band = allBands.FirstOrDefault(b => b.Id == BandId);
+
+			if (_band != null)
+			{
+				_loadingMembers = true;
+				_loadingConcerts = true;
+				_loadingSetlists = true;
+				StateHasChanged();
+
+				var membersTask = UsersClient.GetUsersByBandIdAsync(BandId);
+				var concertsTask = ConcertsClient.GetConcertsByBandIdAsync(BandId);
+				var setlistsTask = SetlistsClient.GetSetlistsByBandIdAsync(BandId);
+
+				await Task.WhenAll(membersTask, concertsTask, setlistsTask);
+
+				_bandMembers = membersTask.Result ?? new List<UserData>();
+				_bandConcerts = concertsTask.Result ?? new List<ConcertData>();
+				_bandSetlists = setlistsTask.Result ?? new List<SetlistData>();
+			}
+			else
+			{
+				Snackbar.Add($"Band with ID {BandId} not found.", Severity.Warning);
+			}
+		}
+		catch (Exception ex)
+		{
+			Snackbar.Add($"Error loading band details: {ex.Message}", Severity.Error);
+		}
+		finally
+		{
+			_loadingBand = false;
+			_loadingMembers = false;
+			_loadingConcerts = false;
+			_loadingSetlists = false;
+			StateHasChanged();
+		}
+	}
+}

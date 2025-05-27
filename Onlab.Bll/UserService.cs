@@ -21,6 +21,8 @@ namespace Onlab.Bll
         Task UpdateUserAsync(int userId, UserData updateUserData);
 
         Task DeleteUserAsync(int userId);
+
+        Task<IList<UserData>> GetUsersByBandIdAsync(int bandId);
     }
 
 
@@ -72,6 +74,14 @@ namespace Onlab.Bll
             await dbContext.SaveChangesAsync();
         }
 
+        public async Task<IList<UserData>> GetUsersByBandIdAsync(int bandId)
+        {
+            // Fetch users associated with a specific band
+            return await dbContext.Users
+                .Where(u => u.BandId == bandId)
+                .ProjectTo<UserData>(mapper.ConfigurationProvider)
+                .ToListAsync();
 
+        }
     }
 }

@@ -16,6 +16,11 @@ namespace Onlab_v2.Controllers
         {
             return await concertService.GetConcerts();
         }
+        [HttpGet("(byband/{bandId})")]
+        public async Task<IList<ConcertData>> GetConcertsByBandId(int bandId)
+        {
+            return await concertService.GetConcertsByBandIdAsync(bandId);
+        }
         [HttpPost]
         public async Task<ActionResult> CreateConcert([FromBody] CreateConcertData createConcertData)
         {

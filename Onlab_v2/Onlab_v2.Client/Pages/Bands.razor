@@ -1,7 +1,154 @@
 ﻿@page "/bands"
+@using Onlab.Transfer
+@using Onlab_v2.Client.Shared
+@using MudBlazor
+@using System.Threading
+@using Onlab.Api
 
-<h1>Bands</h1>
+@inject IBandsClient BandsClient
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject NavigationManager NavigationManager
+
+<MudText Typo="Typo.h4" GutterBottom="true">Band Management</MudText>
+
+<MudTable T="BandData" ServerData="ServerReload"
+          Dense="true" Hover="true" Striped="true" @ref="_table">
+    <ToolBarContent>
+        <MudTextField Value="_searchString"
+                      ValueChanged="(string s) => OnSearch(s)"
+                      Placeholder="Search by Name or Genre"
+                      Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Filled.Search"
+                      IconSize="Size.Medium"
+                      Immediate="true"
+                      Class="mt-0" />
+        <MudSpacer />
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Add"
+                   OnClick="OpenAddDialog">
+            Add Band
+        </MudButton>
+    </ToolBarContent>
+    <HeaderContent>
+        <MudTh><MudTableSortLabel SortLabel="@nameof(BandData.Name)" T="BandData">Name</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel SortLabel="@nameof(BandData.Genre)" T="BandData">Genre</MudTableSortLabel></MudTh>
+        @* <MudTh>Members</MudTh> *@ @* Placeholder for member count - requires API support or loading related users *@
+        <MudTh Style="text-align:right">Actions</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="Name">@context.Name</MudTd>
+        <MudTd DataLabel="Genre">@context.Genre</MudTd>
+        @* <MudTd DataLabel="Members">@* Display member count here if available  </MudTd> *@
+        <MudTd DataLabel="Actions" Style="text-align:right">
+            <MudIconButton Icon="@Icons.Material.Filled.Info" Variant="Variant.Filled" Color="Color.Default" Size="Size.Small" OnClick="@(() => ViewBandDetails(context.Id))" Title="View Details" />
+            <MudIconButton Icon="@Icons.Material.Filled.Edit" Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" OnClick="@(() => OpenEditDialog(context))" Title="Edit Band" />
+            <MudIconButton Icon="@Icons.Material.Filled.Delete" Variant="Variant.Filled" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteBand(context))" Title="Delete Band" />
+        </MudTd>
+    </RowTemplate>
+    <PagerContent>
+        <MudTablePager />
+    </PagerContent>
+</MudTable>
 
 @code {
+    private MudTable<BandData> _table = new();
+    private IEnumerable<BandData> _allBands = new List<BandData>(); // Stores all bands from API
+    private string _searchString = "";
 
+    private async Task<TableData<BandData>> ServerReload(TableState state, CancellationToken cancellationToken = default)
+    {
+        _allBands = await BandsClient.GetBandsAsync() ?? new List<BandData>();
+        var viewBands = _allBands.AsEnumerable();
+
+        if (!string.IsNullOrWhiteSpace(_searchString))
+        {
+            viewBands = viewBands.Where(b =>
+                (b.Name != null && b.Name.Contains(_searchString, StringComparison.OrdinalIgnoreCase)) ||
+                (b.Genre != null && b.Genre.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
+            ).ToList();
+        }
+
+        if (!string.IsNullOrEmpty(state.SortLabel))
+        {
+            Func<BandData, object> Sorter(string sortField)
+            {
+                switch (sortField)
+                {
+                    case nameof(BandData.Name): return x => x.Name;
+                    case nameof(BandData.Genre): return x => x.Genre ?? "";
+                    default: return x => x.Id;
+                }
+            }
+            viewBands = state.SortDirection == SortDirection.Ascending
+                ? viewBands.OrderBy(Sorter(state.SortLabel))
+                : viewBands.OrderByDescending(Sorter(state.SortLabel));
+        }
+
+        var totalItems = viewBands.Count();
+        var pagedData = viewBands.Skip(state.Page * state.PageSize).Take(state.PageSize).ToList();
+        return new TableData<BandData>() { TotalItems = totalItems, Items = pagedData };
+    }
+
+    private void OnSearch(string text)
+    {
+        _searchString = text;
+        _table.ReloadServerData();
+    }
+
+    private async Task OpenAddDialog()
+    {
+        var dialog = await DialogService.ShowAsync<BandFormDialog>("Create New Band");
+        var result = await dialog.Result;
+        if (!result.Canceled)
+        {
+            await _table.ReloadServerData(); // Refresh table
+        }
+    }
+
+    private async Task OpenEditDialog(BandData bandToEdit) // Receives the full BandData object
+    {
+        var parameters = new DialogParameters { ["BandToEdit"] = bandToEdit };
+        var dialog = await DialogService.ShowAsync<BandFormDialog>("Edit Band", parameters);
+        var result = await dialog.Result;
+        if (!result.Canceled)
+        {
+            await _table.ReloadServerData(); // Refresh table
+        }
+    }
+
+    private async Task DeleteBand(BandData band)
+    {
+        var parameters = new DialogParameters
+        {
+            { "ContentText", $"Are you sure you want to delete the band '{band.Name}'?" },
+            { "SubmitButtonText", "Delete" },
+            { "CancelButtonText", "Cancel" },
+            { "Color", Color.Error },
+            { "Icon", Icons.Material.Filled.DeleteForever }
+        };
+
+        var dialog = await DialogService.ShowAsync<ConfirmationDialog>($"Delete Band: {band.Name}", parameters);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            try
+            {
+                await BandsClient.DeleteBandAsync(band.Id); // Assumes DeleteBandAsync takes band.Id
+                Snackbar.Add("Band deleted successfully!", Severity.Success);
+                await _table.ReloadServerData(); // Refresh table
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error deleting band: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    private void ViewBandDetails(int bandId)
+    {
+        NavigationManager.NavigateTo($"/bands/details/{bandId}");
+    }
 }

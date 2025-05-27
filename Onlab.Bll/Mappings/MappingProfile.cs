@@ -14,7 +14,10 @@ namespace Onlab.Bll.Mappings
         public MappingProfile()
         {
             CreateMap<Band, BandData>();
-           
+            CreateMap<BandData, Band>()
+                .ForMember(dest => dest.Id, opt => opt.Ignore()); // Ignore Id to prevent overwriting existing band Ids
+                
+
 
             CreateMap<CreateBandData, Band>()
           
@@ -25,24 +28,49 @@ namespace Onlab.Bll.Mappings
                  .ForMember(dest => dest.Id, opt => opt.Ignore()); // Ignore Id to prevent overwriting existing user Ids
 
             CreateMap<CreateUserData, User>();
-            
 
 
-            CreateMap<Setlist, SetlistData>();
-            CreateMap<CreateSetlistData, Setlist>();
+
+            CreateMap<CreateSetlistData, Setlist>()
+                // Name, Description, BandId will map directly.
+                // ConcertId will also map if CreateSetlistData has it and Setlist entity has ConcertId.
+                // My recommended CreateSetlistData in the previous turn included ConcertId.
+                // Your provided CreateSetlistData in this turn does NOT have ConcertId.
+                // If you want to set ConcertId on creation, add it to CreateSetlistData.
+                // For now, assuming CreateSetlistData DOES NOT have ConcertId based on your latest DTO:
+                .ForMember(dest => dest.ConcertId, opt => opt.Ignore()) // Because CreateSetlistData (your version) lacks it
+                .ForMember(dest => dest.Concert, opt => opt.Ignore());
+
+
+            CreateMap<Setlist, SetlistData>()
+                .ForMember(dest => dest.BandName, opt => opt.MapFrom(src => src.Band != null ? src.Band.Name : null))
+                // Map the Concert navigation property on Setlist entity to the nested ConcertData DTO
+                .ForMember(dest => dest.Concert, opt => opt.MapFrom(src => src.Concert))
+                // ConcertId on SetlistData will be automatically mapped from Setlist.ConcertId if names match
+                // Or explicitly: .ForMember(dest => dest.ConcertId, opt => opt.MapFrom(src => src.ConcertId))
+                .MaxDepth(1); // IMPORTANT: Prevents circular mapping with ConcertData having SetlistData
+
+            // For updating a Setlist entity from a SetlistData DTO
+            CreateMap<SetlistData, Setlist>()
+                .ForMember(dest => dest.Id, opt => opt.Ignore()) // Don't map/overwrite the Id
+                .ForMember(dest => dest.Band, opt => opt.Ignore())   // Ignore navigation property, use BandId
+                .ForMember(dest => dest.Concert, opt => opt.Ignore()); // Ignore navigation property, use ConcertId
+                                                                       // Name, Description, BandId, ConcertId will map by convention if names match
+
+            CreateMap<CreateConcertData, Concert>(); // CreateConcertData now has SetlistId?
+            CreateMap<Concert, ConcertData>()
+                .ForMember(dest => dest.BandName, opt => opt.MapFrom(src => src.Band != null ? src.Band.Name : null))
+                // If ConcertData has a nested SetlistData (and Concert entity has a Setlist nav prop)
+                .ForMember(dest => dest.Setlist, opt => opt.MapFrom(src => src.Setlist))
+                .MaxDepth(1); // Prevent circular mapping if SetlistData also contains ConcertData
+
+            CreateMap<ConcertData, Concert>() // For updates (if you use ConcertData to update Concert)
+                .ForMember(dest => dest.Id, opt => opt.Ignore())
+                .ForMember(dest => dest.Band, opt => opt.Ignore())
+                .ForMember(dest => dest.Setlist, opt => opt.Ignore()); // Typically manage relationship via FK
 
             CreateMap<TaskItem, TaskItemData>();
             CreateMap<CreateTaskItemData, TaskItem>();
-
-            CreateMap<Concert, ConcertData>();
-            CreateMap<CreateConcertData, Concert>();
-
-            CreateMap<ConcertData, Concert>()
-                .ForMember(dest => dest.Id, opt => opt.Ignore()) // Never update the PK from a DTO
-                .ForMember(dest => dest.Band, opt => opt.Ignore()) // Ignore navigation properties, we only care about the FK
-                .ForMember(dest => dest.Setlist, opt => opt.Ignore()); // Ignore navigation properties
-
-
         }
     }
 }

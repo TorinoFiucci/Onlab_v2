@@ -15,6 +15,7 @@ namespace Onlab.Dal.Entities
         public int? BandId { get; set; } // Foreign Key
         public Band? Band { get; set; } // Navigation property
 
+        public int? ConcertId { get; set; } // Foreign Key to the Concert
         public virtual Concert? Concert { get; set; } // Reverse navigation property
 
     }
