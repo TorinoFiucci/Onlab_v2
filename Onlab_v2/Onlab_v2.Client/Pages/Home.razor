@@ -1,220 +1,189 @@
 ﻿@page "/"
-@inject ITaskItemsClient TaskItemsClient
-@inject IUsersClient UsersClient
-@inject HttpClient _MyApi
-
-@inject ISnackbar Snackbar
-
 @using Onlab.Transfer
-@using Onlab.Dal.Entities
 @using Onlab.Api
-@using Microsoft.AspNetCore.Components
-@using System.ComponentModel.DataAnnotations
-@using System.Text.Json.Serialization
-@using System.Text.Json
+@using Onlab.Dal.Entities
+@using MudBlazor
+@using System.Linq
 
+@inject IConcertsClient ConcertsClient
+@inject ITaskItemsClient TaskItemsClient
+@inject NavigationManager NavigationManager
 
-@* @foreach (var task in taskItems)
-{
-	<MudText Typo="Typo.body1">@task.Description</MudText>
-	<MudText Typo="Typo.caption">Due: @task.DueDate?.ToShortDateString()</MudText>
-	<MudText Typo="Typo.caption">User: @task.User?.Name</MudText>
-    <MudText Typo="Typo.caption">Status: @task.Status.ToString()</MudText>
-} *@
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudText Typo="Typo.h3" GutterBottom="true" Align="Align.Center">Welcome to Your Music Hub!</MudText>
+    <MudText Typo="Typo.subtitle1" Class="mb-6" Align="Align.Center">Here's a quick overview of what's happening.</MudText>
 
-<MudDropContainer T="TaskItemData"
-                  @ref="_dropContainer"
-                  Items="@taskItems"
-                  ItemDropped="OnTaskDropped"
-                  ItemsSelector="@((item, column) => item.Status.ToString() == column)"
-                  Class="pa-4">
-    <ChildContent>
-        <MudGrid GutterSize="3">
-            @foreach (var item in _sections)
-            {
-                <MudItem xs="12" sm="6" md="4">
-                    <MudPaper Elevation="1" Class="d-flex flex-column h-full pa-4 mud-background-gray rounded-lg">
-                        <MudToolBar Gutters="false">
-                            <MudText Typo="Typo.subtitle1"><b>@item.Status</b></MudText>
-                            <MudSpacer />
-                        </MudToolBar>
-
-                        <MudDropZone T="TaskItemData" Identifier="@item.Status.ToString()" Class="mud-height-full min-vh-25" Style="min-height:150px;">
-                            <ChildContent>
-                                @foreach (var task in taskItems.Where(t => t.Status == item.Status))
-                                {
-                                    <MudDynamicDropItem T="TaskItemData" Item="task">
-                                        <MudPaper Elevation="25" Class="pa-4 rounded-lg my-3 hover:shadow-lg transition duration-200 cursor-move position-relative">
-                                            <MudIconButton Icon="@Icons.Material.Filled.Delete"
-                                                           Size="Size.Small"
-                                                           Style="position: absolute; top: 4px; right: 4px; color: #e57373;"
-                                                           OnClick="() => DeleteTaskItemAsync(task)" />
-                                            <MudText Typo="Typo.body1">@task.Description</MudText>
-                                            <MudText Typo="Typo.caption">Due: @task.DueDate?.ToShortDateString()</MudText>
-                                            <MudText Typo="Typo.caption">Assigned to: @task.User?.Name</MudText>
-                                        </MudPaper>
-                                    </MudDynamicDropItem>
-                                }
-                            </ChildContent>
-                        </MudDropZone>
-
-                        @* Csak a "New" oszlopban legyen Add Task *@
-                        @if (item.Status == TaskItemStatus.New)
+    <MudGrid Spacing="3">
+        @* Upcoming Concerts Section *@
+        <MudItem xs="12" md="7">
+            <MudPaper Elevation="3" Class="pa-4" Height="100%">
+                <MudText Typo="Typo.h5" GutterBottom="true" Class="mb-3">🎸 Upcoming Concerts</MudText>
+                @if (_loadingConcerts)
+                {
+                    <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+                }
+                else if (_upcomingConcerts == null || !_upcomingConcerts.Any())
+                {
+                    <MudAlert Severity="Severity.Info" Dense="true">No upcoming concerts scheduled yet. <MudLink Href="/concerts">Schedule one now!</MudLink></MudAlert>
+                }
+                else
+                {
+                    <MudGrid Spacing="2">
+                        @foreach (var concert in _upcomingConcerts.Take(3)) // Show top 3 upcoming
                         {
-                            if (item.NewTaskOpen)
-                            {
-                                <MudPaper Elevation="25" Class="pa-2 rounded-lg mt-3">
-                                    <MudTextField @bind-Value="item.NewTaskDescription" Required="true" Placeholder="Task Description" Underline="false" Margin="Margin.Dense" Class="mx-2" />
-                                    <MudDatePicker @bind-Date="item.NewDueDate" Required="true" Label="Due Date" Margin="Margin.Dense" Class="mx-2" />
-                                    <MudSelect T="int" Required="true" @bind-Value="item.NewUserId" Margin="Margin.Dense" Label="Assign to">
-                                        @foreach (var user in users)
+                            <MudItem xs="12" sm="6" md="12">
+                                <MudCard Outlined="true">
+                                    <MudCardHeader>
+                                        <CardHeaderContent>
+                                            <MudText Typo="Typo.h6">@concert.Venue</MudText>
+                                            <MudText Typo="Typo.subtitle2" Color="Color.Primary">@concert.BandName</MudText>
+                                        </CardHeaderContent>
+                                       @*  <CardHeaderActions>
+                                            <MudIconButton Icon="@Icons.Material.Filled.Event" Color="Color.Default" Link="@($"/bands/details/{concert.BandId}")" Title="View Band Details"/>
+                                        </CardHeaderActions> *@
+                                    </MudCardHeader>
+                                    <MudCardContent>
+                                        <MudText Typo="Typo.body2"><strong>Date:</strong> @concert.Date.ToString("dddd, MMMM dd, yyyy 'at' HH:mm")</MudText>
+                                        @if (concert.Setlist != null && !string.IsNullOrEmpty(concert.Setlist.Name))
                                         {
-                                            <MudSelectItem Value="@user.Id">@user.Name</MudSelectItem>
+                                            <MudText Typo="Typo.body2"><strong>Setlist:</strong> 
+                                                <MudLink Href="@($"/setlists/editor/{concert.Setlist.Id}")">@concert.Setlist.Name</MudLink>
+                                            </MudText>
                                         }
-                                    </MudSelect>
-                                    <MudButton OnClick="@(() => CreateNewTaskItemAsync())" Size="Size.Small" Color="Color.Primary" FullWidth="true">Add Task</MudButton>
-                                </MudPaper>
-                            }
-                            else
-                            {
-                                <MudButton OnClick="@(() => item.NewTaskOpen = true)" StartIcon="@Icons.Material.Filled.Add" FullWidth="true" Class="rounded-lg py-2 mt-2">Add Task</MudButton>
-                            }
+                                        @if (!string.IsNullOrEmpty(concert.Contact))
+                                        {
+                                            <MudText Typo="Typo.caption" Class="mt-1">Contact: @concert.Contact</MudText>
+                                        }
+                                    </MudCardContent>
+                                </MudCard>
+                            </MudItem>
                         }
-                    </MudPaper>
-                </MudItem>
-            }
-        </MudGrid>
-    </ChildContent>
-</MudDropContainer>
+                        @if (_upcomingConcerts.Count() > 3)
+                        {
+                            <MudItem xs="12" Class="mt-2">
+                                <MudButton Variant="Variant.Text" Color="Color.Primary" Href="/concerts" FullWidth="true">View All Upcoming Concerts</MudButton>
+                            </MudItem>
+                        }
+                    </MudGrid>
+                }
+            </MudPaper>
+        </MudItem>
 
+        @* Active Tasks Section *@
+        <MudItem xs="12" md="5">
+            <MudPaper Elevation="3" Class="pa-4" Height="100%">
+                <MudText Typo="Typo.h5" GutterBottom="true" Class="mb-3">📝 Active Tasks</MudText>
+                @if (_loadingTasks)
+                {
+                    <MudProgressCircular Color="Color.Secondary" Indeterminate="true" />
+                }
+                else if (_activeTasks == null || !_activeTasks.Any())
+                {
+                    <MudAlert Severity="Severity.Info" Dense="true">No active tasks. <MudLink Href="/tasks">Create some tasks!</MudLink></MudAlert>
+                }
+                else
+                {
+                    <MudList T="TaskItemData" Clickable="false" Dense="true">
+                        @foreach (var task in _activeTasks.Take(5)) // Show top 5 active tasks
+                        {
+                            <MudListItem Icon="@GetTaskIcon(task.Status)" IconColor="@GetTaskIconColor(task.Status)">
+                                <div class="d-flex flex-column" style="width:100%;">
+                                    <MudText Typo="Typo.body1">@task.Description</MudText>
+                                    <div class="d-flex justify-space-between align-center mt-1">
+                                        <MudText Typo="Typo.caption">
+                                            Due: @(task.DueDate.HasValue ? task.DueDate.Value.ToShortDateString() : "N/A")
+                                            @if (task.User != null) {
+                                                <span class="ml-2">| Assignee: @task.User.Name</span>
+                                            }
+                                        </MudText>
+                                        <MudChip Size="Size.Small" Variant="Variant.Outlined" Color="@GetTaskStatusColor(task.Status)">@task.Status.ToString()</MudChip>
+                                    </div>
+                                </div>
+                            </MudListItem>
+                            <MudDivider />
+                        }
+                         @if (_activeTasks.Count() > 5)
+                        {
+                            <MudListItem>
+                                <MudButton Variant="Variant.Text" Color="Color.Primary" Href="/tasks" FullWidth="true">View All Tasks</MudButton>
+                            </MudListItem>
+                        }
+                    </MudList>
+                }
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+</MudContainer>
 
 @code {
-    public required MudDropContainer<TaskItemData> _dropContainer;
-    private IList<TaskItemData> taskItems = new List<TaskItemData>();
-    private CreateTaskItemData newTaskItem = new CreateTaskItemData();
-    private TaskItemStatus newTaskItemStatus = new TaskItemStatus();
-    private bool isLoading = true;
-    private IList<UserData> users = new List<UserData>();
-
-
+    private IEnumerable<ConcertData>? _upcomingConcerts;
+    private IEnumerable<TaskItemData>? _activeTasks;
+    private bool _loadingConcerts = true;
+    private bool _loadingTasks = true;
 
     protected override async Task OnInitializedAsync()
     {
-        try
-        {
-            await GetAllTaskItemsAsync();
-            await GetAllUsersAsync();
-            //taskItems = await _MyApi.GetFromJsonAsync<IList<TaskItemData>>("/api/TaskItems");
-            //taskItems = await TaskItemsClient.GetTaskItemsAsync();
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add($"Error loading tasks: {ex.Message}", Severity.Error);
-        }
-        finally
-        {
-            isLoading = false;
-        }
+        _loadingConcerts = true;
+        _loadingTasks = true;
+
+        var concertsTask = LoadUpcomingConcerts();
+        var tasksTask = LoadActiveTasks();
+
+        await Task.WhenAll(concertsTask, tasksTask);
+
+        _loadingConcerts = false;
+        _loadingTasks = false;
     }
 
-    private async Task GetAllUsersAsync()
-    {
-        //users = await _MyApi.GetFromJsonAsync<IList<UserData>>("/api/Users");
-		users = await UsersClient.GetUsersAsync();
-		
-    }
-
-    private async Task GetAllTaskItemsAsync()
-    {
-        //taskItems = await _MyApi.GetFromJsonAsync<IList<TaskItemData>>("/api/TaskItems");
-        taskItems = await TaskItemsClient.GetTaskItemsAsync();
-    }
-
-    private async Task CreateNewTaskItemAsync()
-    {
-        var openSection = _sections.FirstOrDefault(s => s.NewTaskOpen);
-        if (openSection is null)
-            return;
-
-        newTaskItem.DueDate = openSection.NewDueDate ?? DateTime.Now.AddDays(7);
-        newTaskItem.Description = openSection.NewTaskDescription ?? string.Empty;
-        newTaskItem.UserId = openSection.NewUserId;
-
-        await _MyApi.PostAsJsonAsync("/api/TaskItems", newTaskItem);
-
-        // 🆕 Automatikusan zárjuk be az adott oszlop új feladat paneljét
-        openSection.NewTaskOpen = false;
-
-        // 🆕 Frissítsük a listaállapotot, ha szeretnéd látni az újonnan hozzáadott feladatot is:
-        await GetAllTaskItemsAsync();
-        _dropContainer?.Refresh();
-    }
-
-    private async Task OnTaskDropped(MudItemDropInfo<TaskItemData> dropInfo)
-    {
-        if (dropInfo.Item is null)
-            return; // vagy logolhatod, ha szeretnéd
-
-        if (Enum.TryParse<TaskItemStatus>(dropInfo.DropzoneIdentifier, out var newStatus))
-        {
-            dropInfo.Item.Status = newStatus;
-
-            await _MyApi.PutAsJsonAsync($"/api/TaskItems/{dropInfo.Item.Id}/status", newStatus);
-
-            await GetAllTaskItemsAsync();
-            _dropContainer?.Refresh();
-        }
-    }
-
-
-
-
-    private async Task UpdateTaskItemStatusAsync()
-    {
-        await _MyApi.PutAsJsonAsync("/api/TaskItems/{taskItemId}/status", newTaskItemStatus);
-    }
-
-    private async Task DeleteTaskItemAsync(TaskItemData task)
+    private async Task LoadUpcomingConcerts()
     {
         try
         {
-            await TaskItemsClient.DeleteTaskItemAsync(task.Id); // ← API hívás
-
-            Snackbar.Add("Task deleted.", Severity.Success);
-
-            await GetAllTaskItemsAsync(); // újratöltés
-            _dropContainer?.Refresh();    // UI frissítés
+            var allConcerts = await ConcertsClient.GetConcertsAsync() ?? new List<ConcertData>();
+            _upcomingConcerts = allConcerts
+                                .Where(c => c.Date.Date >= DateTime.Today)
+                                .OrderBy(c => c.Date)
+                                .ToList();
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+            Console.WriteLine($"Error loading concerts: {ex.Message}"); // Log error
+            _upcomingConcerts = new List<ConcertData>(); // Default to empty list on error
         }
     }
 
-
-    private List<KanBanSections> _sections = new()
-        {
-            new KanBanSections(TaskItemStatus.New, false, String.Empty, DateTime.Today, 0),
-            new KanBanSections(TaskItemStatus.InProgress, false, String.Empty, DateTime.Today, 0),
-            new KanBanSections(TaskItemStatus.Done, false, String.Empty, DateTime.Today, 0)
-        };
-
-    public class KanBanSections
+    private async Task LoadActiveTasks()
     {
-        public TaskItemStatus Status { get; init; }
-        public bool NewTaskOpen { get; set; }
-        public string NewTaskDescription { get; set; }
-        public DateTime? NewDueDate { get; set; } = DateTime.Now.AddDays(7); // Default to 7 days from now
-        public int NewUserId { get; set; } = 0; // Default to user ID 1
-
-        public KanBanSections(TaskItemStatus status, bool newTaskOpen, string newTaskDescription, DateTime? newDueDate, int newUserId)
+        try
         {
-            Status = status;
-            NewTaskOpen = newTaskOpen;
-            NewTaskDescription = newTaskDescription;
-            NewDueDate = newDueDate;
-            NewUserId = newUserId;
+            var allTasks = await TaskItemsClient.GetTaskItemsAsync() ?? new List<TaskItemData>();
+            _activeTasks = allTasks
+                            .Where(t => t.Status == TaskItemStatus.New || t.Status == TaskItemStatus.InProgress)
+                            .OrderBy(t => t.DueDate ?? DateTime.MaxValue) // Sort by DueDate, tasks without due date last
+                            .ToList();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading tasks: {ex.Message}"); // Log error
+            _activeTasks = new List<TaskItemData>(); // Default to empty list on error
         }
     }
 
+    private Color GetTaskStatusColor(TaskItemStatus status) => status switch
+    {
+        TaskItemStatus.New => Color.Info,
+        TaskItemStatus.InProgress => Color.Warning,
+        TaskItemStatus.Done => Color.Success,
+        _ => Color.Default
+    };
+
+    private string GetTaskIcon(TaskItemStatus status) => status switch
+    {
+        TaskItemStatus.New => Icons.Material.Filled.FiberNew,
+        TaskItemStatus.InProgress => Icons.Material.Filled.DonutLarge,
+        TaskItemStatus.Done => Icons.Material.Filled.CheckCircle,
+        _ => Icons.Material.Filled.Task
+    };
+
+    private Color GetTaskIconColor(TaskItemStatus status) => GetTaskStatusColor(status); // Can be same as chip color or different
 }

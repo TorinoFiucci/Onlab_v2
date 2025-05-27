@@ -6,24 +6,34 @@
 @inject IBandsClient BandsClient
 @inject ISnackbar Snackbar
 
-<MudDialog>
+<MudDialog Style=" min-height: 480px;">
     <TitleContent>
         <MudText Typo="Typo.h6">@_title</MudText>
     </TitleContent>
     <DialogContent>
-        @* Use _formModel for binding within the form *@
         <MudForm @ref="_form" @bind-IsValid="_isValid" Model="@_formModel">
             <MudTextField @bind-Value="_formModel.Venue" For="@(() => _formModel.Venue)"
                           Label="Venue" Required="true" RequiredError="Venue is required." />
 
-            @* Bind to the nullable _formModel.DateForPicker *@
-            <MudDatePicker @bind-Date="_formModel.DateForPicker" For="@(() => _formModel.DateForPicker)"
-                           Label="Date" Required="true" RequiredError="Date is required." Editable="true" />
+            <MudGrid Spacing="2">
+                <MudItem xs="12" sm="7">
+                    <MudDatePicker @bind-Date="_formModel.SelectedDate" For="@(() => _formModel.SelectedDate)"
+                                   Label="Concert Date" Required="true" RequiredError="Date is required." Editable="true"
+                                   Variant="Variant.Text" />
+                </MudItem>
+                <MudItem xs="12" sm="5">
+                    <MudTimePicker @bind-Time="_formModel.SelectedTime" For="@(() => _formModel.SelectedTime)"
+                                   Label="Concert Time" Required="true" RequiredError="Time is required." Editable="true"
+                                   AmPm="false" 
+                                   PickerVariant="PickerVariant.Dialog"
+                                   Variant="Variant.Text" /> @* Or Dialog *@
+                </MudItem>
+            </MudGrid>
 
             <MudTextField @bind-Value="_formModel.Contact" For="@(() => _formModel.Contact)"
-                          Label="Contact (Optional)" Lines="2" />
+                          Label="Contact (Optional)" Lines="2" Class="mt-3" />
 
-            <MudSelect T="int?" @bind-Value="_formModel.BandId" Label="Performing Band" For="@(() => _formModel.BandId)" Required="true" RequiredError="Band is required.">
+            <MudSelect T="int?" @bind-Value="_formModel.BandId" Label="Performing Band" For="@(() => _formModel.BandId)" Required="true" RequiredError="Band is required." Class="mt-3">
                 @if (_availableBands.Any())
                 {
                     foreach (var band in _availableBands)
@@ -60,23 +70,34 @@
     IMudDialogInstance? MudDialog { get; set; } 
 
     [Parameter]
-    public ConcertData? ConcertToEdit { get; set; } // This is your DTO with non-nullable DateTime
+    public ConcertData? ConcertToEdit { get; set; }
 
-    // Internal helper class for the form model to handle nullable DateTime for the picker
+    // Internal helper class for the form model
     private class ConcertFormModel
     {
         public int Id { get; set; }
         public string Venue { get; set; } = string.Empty;
-        public DateTime? DateForPicker { get; set; } // <<< Use nullable DateTime here
+        public DateTime? SelectedDate { get; set; } // For MudDatePicker
+        public TimeSpan? SelectedTime { get; set; } // For MudTimePicker
         public string? Contact { get; set; }
         public int? BandId { get; set; }
-        public SetlistData? LinkedSetlist { get; set; } // For display
+        public SetlistData? LinkedSetlist { get; set; }
+
+        // Helper to combine Date and Time
+        public DateTime? GetCombinedDateTime()
+        {
+            if (SelectedDate.HasValue && SelectedTime.HasValue)
+            {
+                return SelectedDate.Value.Date + SelectedTime.Value;
+            }
+            return null;
+        }
     }
 
     private string _title = "";
     private MudForm? _form;
     private bool _isValid;
-    private ConcertFormModel _formModel = new(); // Use the internal form model
+    private ConcertFormModel _formModel = new();
     private IEnumerable<BandData> _availableBands = new List<BandData>();
     private bool _isEditMode = false;
 
@@ -88,17 +109,22 @@
         {
             _title = "Schedule New Concert";
             _isEditMode = false;
-            _formModel = new ConcertFormModel() { DateForPicker = DateTime.Today }; // Default date
+            _formModel = new ConcertFormModel()
+                {
+                    SelectedDate = DateTime.Today, // Default date
+                    SelectedTime = DateTime.Now.TimeOfDay // Default time
+                };
         }
         else // Edit mode
         {
             _title = $"Edit Concert: {ConcertToEdit.Venue}";
             _isEditMode = true;
-            _formModel = new ConcertFormModel // Populate internal model
+            _formModel = new ConcertFormModel
                 {
                     Id = ConcertToEdit.Id,
                     Venue = ConcertToEdit.Venue,
-                    DateForPicker = ConcertToEdit.Date, // DateTime implicitly converts to DateTime?
+                    SelectedDate = ConcertToEdit.Date.Date, // Extract Date part
+                    SelectedTime = ConcertToEdit.Date.TimeOfDay, // Extract Time part
                     Contact = ConcertToEdit.Contact,
                     BandId = ConcertToEdit.BandId,
                     LinkedSetlist = ConcertToEdit.Setlist
@@ -112,13 +138,10 @@
         await _form.Validate();
         if (!_isValid || _formModel.BandId == null) return;
 
-        // Ensure DateForPicker has a value before assigning to non-nullable DTO properties
-        if (!_formModel.DateForPicker.HasValue)
+        DateTime? combinedDateTime = _formModel.GetCombinedDateTime();
+        if (!combinedDateTime.HasValue)
         {
-            // This should ideally be caught by a Required="true" on the picker if it were bound to a non-nullable,
-            // but since we made it nullable for binding, we must check here.
-            // Or, ensure MudDatePicker's Required works correctly with a nullable type if a value is needed.
-            Snackbar.Add("Date is required.", Severity.Error);
+            Snackbar.Add("Date and Time are required.", Severity.Error);
             return;
         }
 
@@ -129,7 +152,7 @@
                 var createDto = new CreateConcertData
                     {
                         Venue = _formModel.Venue,
-                        Date = _formModel.DateForPicker.Value, // Convert DateTime? back to DateTime
+                        Date = combinedDateTime.Value, // Use combined value
                         Contact = _formModel.Contact,
                         BandId = _formModel.BandId
                     };
@@ -138,16 +161,13 @@
             }
             else // Existing concert
             {
-                // Populate the original DTO type for the update call
                 var updateDto = new ConcertData
                     {
                         Id = _formModel.Id,
                         Venue = _formModel.Venue,
-                        Date = _formModel.DateForPicker.Value, // Convert DateTime? back to DateTime
+                        Date = combinedDateTime.Value, // Use combined value
                         Contact = _formModel.Contact,
                         BandId = _formModel.BandId,
-                    // Preserve original BandName, SetlistId, and Setlist object if they are not being edited here.
-                    // Your API client and backend will determine how UpdateConcertAsync handles these.
                         BandName = ConcertToEdit?.BandName,
                         SetlistId = ConcertToEdit?.SetlistId,
                         Setlist = ConcertToEdit?.Setlist
