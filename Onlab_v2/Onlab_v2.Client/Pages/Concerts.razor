@@ -1,7 +1,153 @@
 @page "/concerts"
-<h1>Concerts</h1>
+@using Onlab.Transfer
+@using Onlab_v2.Client.Shared
+@using MudBlazor
+@using System.Threading
+@using Onlab.Api
+
+@inject IConcertsClient ConcertsClient
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject NavigationManager NavigationManager
+
+<MudText Typo="Typo.h4" GutterBottom="true">Concert Schedule</MudText>
+<MudText Typo="Typo.body2" Class="mb-4">View, schedule, and manage concerts.</MudText>
+
+<MudTable T="ConcertData" ServerData="ServerReload"
+          Dense="true" Hover="true" Striped="true" @ref="_table">
+    <ToolBarContent>
+        <MudTextField Value="_searchString"
+                      ValueChanged="(string s) => OnSearch(s)"
+                      Placeholder="Search by Venue or Band"
+                      Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Filled.Search"
+                      IconSize="Size.Medium"
+                      Immediate="true" Class="mt-0" />
+        <MudSpacer />
+        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Add"
+                   OnClick="OpenAddDialog">
+            Schedule New Concert
+        </MudButton>
+    </ToolBarContent>
+    <HeaderContent>
+        <MudTh><MudTableSortLabel SortLabel="@nameof(ConcertData.Venue)" T="ConcertData">Venue</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel SortLabel="@nameof(ConcertData.Date)" T="ConcertData">Date</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel SortLabel="@nameof(ConcertData.BandName)" T="ConcertData">Band</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel SortLabel="SetlistName" T="ConcertData">Assigned Setlist</MudTableSortLabel></MudTh> @* Custom sort label for nested property *@
+        <MudTh Style="text-align:right">Actions</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="Venue">@context.Venue</MudTd>
+        <MudTd DataLabel="Date">@context.Date.ToShortDateString() @context.Date.ToShortTimeString()</MudTd>
+        <MudTd DataLabel="Band">@context.BandName</MudTd>
+        <MudTd DataLabel="Assigned Setlist">
+            @if (context.Setlist != null)
+            {
+                <MudText Link="@($"/setlists/editor/{context.Setlist.Id}")" Typo="Typo.body2" Color="Color.Primary">@context.Setlist.Name</MudText>
+            }
+            else
+            {
+                <MudText Typo="Typo.caption">N/A</MudText>
+            }
+        </MudTd>
+        <MudTd DataLabel="Actions" Style="text-align:right">
+            <MudIconButton Icon="@Icons.Material.Filled.Edit" Variant="Variant.Text" Color="Color.Primary" Size="Size.Small" OnClick="@(() => OpenEditDialog(context))" Title="Edit Concert" />
+            <MudIconButton Icon="@Icons.Material.Filled.Delete" Variant="Variant.Text" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteConcert(context))" Title="Delete Concert" />
+        </MudTd>
+    </RowTemplate>
+    <PagerContent>
+        <MudTablePager />
+    </PagerContent>
+</MudTable>
 
 @code {
-	// This is where you can add code specific to the Concerts page.
-	// For example, you might want to fetch a list of concerts from an API or a database.
+    private MudTable<ConcertData> _table = new();
+    private IEnumerable<ConcertData> _allConcerts = new List<ConcertData>();
+    private string _searchString = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Table will call ServerReload on init
+    }
+
+    private async Task<TableData<ConcertData>> ServerReload(TableState state, CancellationToken cancellationToken = default)
+    {
+        _allConcerts = await ConcertsClient.GetConcertsAsync() ?? new List<ConcertData>();
+        var viewConcerts = _allConcerts.AsEnumerable();
+
+        if (!string.IsNullOrWhiteSpace(_searchString))
+        {
+            viewConcerts = viewConcerts.Where(c =>
+                (c.Venue != null && c.Venue.Contains(_searchString, StringComparison.OrdinalIgnoreCase)) ||
+                (c.BandName != null && c.BandName.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
+            ).ToList();
+        }
+
+        if (!string.IsNullOrEmpty(state.SortLabel))
+        {
+            Func<ConcertData, object?> Sorter(string sortField)
+            {
+                switch (sortField)
+                {
+                    case nameof(ConcertData.Venue): return x => x.Venue;
+                    case nameof(ConcertData.Date): return x => x.Date;
+                    case nameof(ConcertData.BandName): return x => x.BandName;
+                    case "SetlistName": return x => x.Setlist?.Name; // Sort by nested property
+                    default: return x => x.Id;
+                }
+            }
+            viewConcerts = state.SortDirection == SortDirection.Ascending
+                ? viewConcerts.OrderBy(Sorter(state.SortLabel))
+                : viewConcerts.OrderByDescending(Sorter(state.SortLabel));
+        }
+
+        var totalItems = viewConcerts.Count();
+        var pagedData = viewConcerts.Skip(state.Page * state.PageSize).Take(state.PageSize).ToList();
+        return new TableData<ConcertData>() { TotalItems = totalItems, Items = pagedData };
+    }
+
+    private void OnSearch(string text)
+    {
+        _searchString = text;
+        _table.ReloadServerData();
+    }
+
+    private async Task OpenAddDialog()
+    {
+        var dialog = await DialogService.ShowAsync<ConcertFormDialog>("Schedule New Concert");
+        var result = await dialog.Result;
+        if (!result.Canceled) { await _table.ReloadServerData(); }
+    }
+
+    private async Task OpenEditDialog(ConcertData concertToEdit)
+    {
+        var parameters = new DialogParameters { ["ConcertToEdit"] = concertToEdit };
+        var dialog = await DialogService.ShowAsync<ConcertFormDialog>("Edit Concert", parameters);
+        var result = await dialog.Result;
+        if (!result.Canceled) { await _table.ReloadServerData(); }
+    }
+
+    private async Task DeleteConcert(ConcertData concert)
+    {
+        var parameters = new DialogParameters {
+            { "ContentText", $"Delete concert at '{concert.Venue}' on {concert.Date:d}?" },
+            { "SubmitButtonText", "Delete" }, { "Color", Color.Error }, { "Icon", Icons.Material.Filled.DeleteForever }
+        };
+        var dialog = await DialogService.ShowAsync<ConfirmationDialog>($"Delete Concert", parameters);
+        var result = await dialog.Result;
+        if (!result.Canceled)
+        {
+            try
+            {
+                await ConcertsClient.DeleteConcertAsync(concert.Id);
+                Snackbar.Add("Concert deleted!", Severity.Success);
+                await _table.ReloadServerData();
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error deleting concert: {ex.Message}", Severity.Error);
+            }
+        }
+    }
 }

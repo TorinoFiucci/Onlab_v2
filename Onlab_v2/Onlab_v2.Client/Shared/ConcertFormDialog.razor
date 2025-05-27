@@ -1,0 +1,167 @@
+﻿@using Onlab.Transfer
+@using Onlab.Api
+@using MudBlazor
+
+@inject IConcertsClient ConcertsClient
+@inject IBandsClient BandsClient
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">@_title</MudText>
+    </TitleContent>
+    <DialogContent>
+        @* Use _formModel for binding within the form *@
+        <MudForm @ref="_form" @bind-IsValid="_isValid" Model="@_formModel">
+            <MudTextField @bind-Value="_formModel.Venue" For="@(() => _formModel.Venue)"
+                          Label="Venue" Required="true" RequiredError="Venue is required." />
+
+            @* Bind to the nullable _formModel.DateForPicker *@
+            <MudDatePicker @bind-Date="_formModel.DateForPicker" For="@(() => _formModel.DateForPicker)"
+                           Label="Date" Required="true" RequiredError="Date is required." Editable="true" />
+
+            <MudTextField @bind-Value="_formModel.Contact" For="@(() => _formModel.Contact)"
+                          Label="Contact (Optional)" Lines="2" />
+
+            <MudSelect T="int?" @bind-Value="_formModel.BandId" Label="Performing Band" For="@(() => _formModel.BandId)" Required="true" RequiredError="Band is required.">
+                @if (_availableBands.Any())
+                {
+                    foreach (var band in _availableBands)
+                    {
+                        <MudSelectItem Value="@((int?)band.Id)">@band.Name</MudSelectItem>
+                    }
+                }
+                else
+                {
+                    <MudText Color="Color.Warning" Class="pa-2">No bands available. Please create a band first.</MudText>
+                }
+            </MudSelect>
+
+            @if (_isEditMode && _formModel.LinkedSetlist != null)
+            {
+                <MudTextField Value="@_formModel.LinkedSetlist.Name" Label="Assigned Setlist (Read-Only)" ReadOnly="true" Variant="Variant.Outlined" Class="mt-3"
+                              HelperText="To change the setlist, edit the Setlist entity and link it to this concert." />
+            }
+            else if (_isEditMode)
+            {
+                <MudTextField Value="@("None")" Label="Assigned Setlist (Read-Only)" ReadOnly="true" Variant="Variant.Outlined" Class="mt-3"
+                              HelperText="No setlist is currently assigned. Edit a Setlist to link it." />
+            }
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit" Disabled="@(!_isValid || _formModel.BandId == null)">Save Concert</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    IMudDialogInstance? MudDialog { get; set; } 
+
+    [Parameter]
+    public ConcertData? ConcertToEdit { get; set; } // This is your DTO with non-nullable DateTime
+
+    // Internal helper class for the form model to handle nullable DateTime for the picker
+    private class ConcertFormModel
+    {
+        public int Id { get; set; }
+        public string Venue { get; set; } = string.Empty;
+        public DateTime? DateForPicker { get; set; } // <<< Use nullable DateTime here
+        public string? Contact { get; set; }
+        public int? BandId { get; set; }
+        public SetlistData? LinkedSetlist { get; set; } // For display
+    }
+
+    private string _title = "";
+    private MudForm? _form;
+    private bool _isValid;
+    private ConcertFormModel _formModel = new(); // Use the internal form model
+    private IEnumerable<BandData> _availableBands = new List<BandData>();
+    private bool _isEditMode = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _availableBands = await BandsClient.GetBandsAsync() ?? new List<BandData>();
+
+        if (ConcertToEdit == null) // Create mode
+        {
+            _title = "Schedule New Concert";
+            _isEditMode = false;
+            _formModel = new ConcertFormModel() { DateForPicker = DateTime.Today }; // Default date
+        }
+        else // Edit mode
+        {
+            _title = $"Edit Concert: {ConcertToEdit.Venue}";
+            _isEditMode = true;
+            _formModel = new ConcertFormModel // Populate internal model
+                {
+                    Id = ConcertToEdit.Id,
+                    Venue = ConcertToEdit.Venue,
+                    DateForPicker = ConcertToEdit.Date, // DateTime implicitly converts to DateTime?
+                    Contact = ConcertToEdit.Contact,
+                    BandId = ConcertToEdit.BandId,
+                    LinkedSetlist = ConcertToEdit.Setlist
+                };
+        }
+    }
+
+    private async Task Submit()
+    {
+        if (_form == null) return;
+        await _form.Validate();
+        if (!_isValid || _formModel.BandId == null) return;
+
+        // Ensure DateForPicker has a value before assigning to non-nullable DTO properties
+        if (!_formModel.DateForPicker.HasValue)
+        {
+            // This should ideally be caught by a Required="true" on the picker if it were bound to a non-nullable,
+            // but since we made it nullable for binding, we must check here.
+            // Or, ensure MudDatePicker's Required works correctly with a nullable type if a value is needed.
+            Snackbar.Add("Date is required.", Severity.Error);
+            return;
+        }
+
+        try
+        {
+            if (!_isEditMode) // New concert
+            {
+                var createDto = new CreateConcertData
+                    {
+                        Venue = _formModel.Venue,
+                        Date = _formModel.DateForPicker.Value, // Convert DateTime? back to DateTime
+                        Contact = _formModel.Contact,
+                        BandId = _formModel.BandId
+                    };
+                await ConcertsClient.CreateConcertAsync(createDto);
+                Snackbar.Add("Concert scheduled successfully!", Severity.Success);
+            }
+            else // Existing concert
+            {
+                // Populate the original DTO type for the update call
+                var updateDto = new ConcertData
+                    {
+                        Id = _formModel.Id,
+                        Venue = _formModel.Venue,
+                        Date = _formModel.DateForPicker.Value, // Convert DateTime? back to DateTime
+                        Contact = _formModel.Contact,
+                        BandId = _formModel.BandId,
+                    // Preserve original BandName, SetlistId, and Setlist object if they are not being edited here.
+                    // Your API client and backend will determine how UpdateConcertAsync handles these.
+                        BandName = ConcertToEdit?.BandName,
+                        SetlistId = ConcertToEdit?.SetlistId,
+                        Setlist = ConcertToEdit?.Setlist
+                    };
+                await ConcertsClient.UpdateConcertAsync(_formModel.Id, updateDto);
+                Snackbar.Add("Concert updated successfully!", Severity.Success);
+            }
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error saving concert: {ex.Message}", Severity.Error);
+        }
+    }
+
+    void Cancel() => MudDialog.Cancel();
+}
