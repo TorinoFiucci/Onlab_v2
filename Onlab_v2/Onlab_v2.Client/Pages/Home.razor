@@ -10,7 +10,7 @@
 @inject NavigationManager NavigationManager
 
 <MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
-    <MudText Typo="Typo.h3" GutterBottom="true" Align="Align.Center">Welcome to Your Music Hub!</MudText>
+    <MudText Typo="Typo.h2" GutterBottom="true" Align="Align.Center">Welcome to Music Hub!</MudText>
     <MudText Typo="Typo.subtitle1" Class="mb-6" Align="Align.Center">Here's a quick overview of what's happening.</MudText>
 
     <MudGrid Spacing="3">
@@ -47,7 +47,7 @@
                                         @if (concert.Setlist != null && !string.IsNullOrEmpty(concert.Setlist.Name))
                                         {
                                             <MudText Typo="Typo.body2"><strong>Setlist:</strong> 
-                                                <MudLink Href="@($"/setlists/editor/{concert.Setlist.Id}")">@concert.Setlist.Name</MudLink>
+                                            <MudLink Href="@($"/setlists/editor/{concert.Setlist.Id}")">@concert.Setlist.Name</MudLink>
                                             </MudText>
                                         }
                                         @if (!string.IsNullOrEmpty(concert.Contact))
@@ -86,14 +86,14 @@
                     <MudList T="TaskItemData" Clickable="false" Dense="true">
                         @foreach (var task in _activeTasks.Take(5)) // Show top 5 active tasks
                         {
-                            <MudListItem Icon="@GetTaskIcon(task.Status)" IconColor="@GetTaskIconColor(task.Status)">
+                            <MudListItem Href="/tasks" Icon="@GetTaskIcon(task.Status)" IconColor="@GetTaskIconColor(task.Status)">
                                 <div class="d-flex flex-column" style="width:100%;">
                                     <MudText Typo="Typo.body1">@task.Description</MudText>
                                     <div class="d-flex justify-space-between align-center mt-1">
                                         <MudText Typo="Typo.caption">
                                             Due: @(task.DueDate.HasValue ? task.DueDate.Value.ToShortDateString() : "N/A")
                                             @if (task.User != null) {
-                                                <span class="ml-2">| Assignee: @task.User.Name</span>
+                                                <span class="ml-2">| Assigned to: @task.User.Name</span>
                                             }
                                         </MudText>
                                         <MudChip Size="Size.Small" Variant="Variant.Outlined" Color="@GetTaskStatusColor(task.Status)">@task.Status.ToString()</MudChip>
