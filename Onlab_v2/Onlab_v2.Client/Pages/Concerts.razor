@@ -34,17 +34,20 @@
         <MudTh><MudTableSortLabel SortLabel="@nameof(ConcertData.Venue)" T="ConcertData">Venue</MudTableSortLabel></MudTh>
         <MudTh><MudTableSortLabel SortLabel="@nameof(ConcertData.Date)" T="ConcertData">Date</MudTableSortLabel></MudTh>
         <MudTh><MudTableSortLabel SortLabel="@nameof(ConcertData.BandName)" T="ConcertData">Band</MudTableSortLabel></MudTh>
-        <MudTh><MudTableSortLabel SortLabel="SetlistName" T="ConcertData">Assigned Setlist</MudTableSortLabel></MudTh> @* Custom sort label for nested property *@
+        <MudTh><MudTableSortLabel SortLabel="Contact" T="ConcertData">Contact</MudTableSortLabel></MudTh> @* <-- ADDED HEADER FOR CONTACT *@
+        <MudTh><MudTableSortLabel SortLabel="SetlistName" T="ConcertData">Assigned Setlist</MudTableSortLabel></MudTh>
         <MudTh Style="text-align:right">Actions</MudTh>
     </HeaderContent>
     <RowTemplate>
         <MudTd DataLabel="Venue">@context.Venue</MudTd>
         <MudTd DataLabel="Date">@context.Date.ToShortDateString() @context.Date.ToShortTimeString()</MudTd>
         <MudTd DataLabel="Band">@context.BandName</MudTd>
+        <MudTd DataLabel="Contact">@context.Contact</MudTd> @* <-- ADDED CELL FOR CONTACT *@
         <MudTd DataLabel="Assigned Setlist">
-            @if (context.Setlist != null)
+            @if (context.Setlist != null && context.Setlist.Id != 0) // Check Id too in case Setlist object is empty
             {
-                <MudText Link="@($"/setlists/editor/{context.Setlist.Id}")" Typo="Typo.body2" Color="Color.Primary">@context.Setlist.Name</MudText>
+                // Make the Setlist Name a clickable link
+                <MudLink Href="@($"/setlists/editor/{context.Setlist.Id}")" Typo="Typo.body2">@context.Setlist.Name</MudLink>
             }
             else
             {
@@ -80,7 +83,8 @@
         {
             viewConcerts = viewConcerts.Where(c =>
                 (c.Venue != null && c.Venue.Contains(_searchString, StringComparison.OrdinalIgnoreCase)) ||
-                (c.BandName != null && c.BandName.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
+                (c.BandName != null && c.BandName.Contains(_searchString, StringComparison.OrdinalIgnoreCase)) ||
+                (c.Contact != null && c.Contact.Contains(_searchString, StringComparison.OrdinalIgnoreCase)) // Added contact to search
             ).ToList();
         }
 
@@ -93,7 +97,8 @@
                     case nameof(ConcertData.Venue): return x => x.Venue;
                     case nameof(ConcertData.Date): return x => x.Date;
                     case nameof(ConcertData.BandName): return x => x.BandName;
-                    case "SetlistName": return x => x.Setlist?.Name; // Sort by nested property
+                    case nameof(ConcertData.Contact): return x => x.Contact; // Added contact to sorter
+                    case "SetlistName": return x => x.Setlist?.Name;
                     default: return x => x.Id;
                 }
             }
